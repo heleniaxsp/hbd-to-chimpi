@@ -85,8 +85,8 @@
     guarda.set('llave', aB64(cruda));
     return crypto.subtle.importKey('raw', cruda, 'AES-GCM', false, ['decrypt']);
   }
-  async function descifrar(url) {
-    const r = await fetch(url);
+  async function descifrar(url, fresco) {
+    const r = await fetch(url, fresco ? { cache: 'no-cache' } : undefined);
     if (!r.ok) throw new Error('no_encontrado');
     const buf = new Uint8Array(await r.arrayBuffer());
     return crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, llave, buf.slice(12));
@@ -335,66 +335,61 @@
     return '';
   }
 
-  const altitud = (capa, cota) => `<div class="altitud" aria-hidden="true"><span>${capa}</span><b>${cota}</b></div>`;
-  const CORDILLERA = `<svg viewBox="0 0 800 110" preserveAspectRatio="none" aria-hidden="true">
-    <path d="M0 110V84l60-10 58 8 82-30 50 12 76-42 44 24 40-32 44 30 46-14 62 36 78-12 82 22 78-10v44z" fill="#c9dcf0"/>
-    <path d="M326 22l-20 22 12-3 8 8 10-9 12 6zM410 14l-16 20 10-2 8 9 9-10 11 5zM500 30l-14 14 9-2 7 6 8-7 10 3z" fill="#ffffff"/>
-    <path d="M0 110V98l90-12 96 10 120-22 110 16 124-18 130 14 130-10v34z" fill="#a9c6e6"/>
-  </svg>`;
-
   function vistaInicio() {
-    const h = C.homenajeado, T = C.textos;
+    const h = C.homenajeado, T = C.textos, nombre = esc(h.nombre);
     const saludos = posts.filter(p => p.seccion === 'saludo' && !p.oculto);
     const gente = new Set(saludos.map(p => norm(p.autor))).size;
     const d = diasPara(h.fecha), f = fechaDia(h.fecha);
-    const cuenta = d > 1 ? `<b>${d}</b> días para el ${f}` : d === 1 ? `<b>1</b> día: es mañana` : d === 0 ? `<b>Hoy</b> es el día` : `Fue el ${f}. Todavía puedes sumar tu saludo`;
+    const cuenta = d > 0 ? `<b>T−${d}</b>${d === 1 ? 'día' : 'días'} para el ${f}` : d === 0 ? `<b>T−0</b>Hoy es el día` : `<b>T+${-d}</b>Fue el ${f}. Aún puedes sumar tu saludo`;
     const portada = esEl()
       ? `<p class="rotulo">${f} · ${esc(T.elRotulo)}</p>
-         <h1>${esc(T.elTitulo)} <em>${esc(h.nombre)}.</em></h1>
+         <h1 class="palabra"><span>Feliz</span><span class="lado">${esc(T.elLado)}</span><span class="l2">cumple,</span><span class="l2">${nombre}</span></h1>
          <p class="bajada">${esc(saludos.length ? T.elBajada.replace('{personas}', plural(gente, 'persona', 'personas')).replace('{saludos}', plural(saludos.length, 'saludo', 'saludos')) : T.elBajadaVacia)}</p>
-         <div class="portada-acciones">
-           <a class="btn btn-haz btn-grande" href="#mosaico" data-ir="mosaico">${esc(T.elVer)}</a>
-           <button type="button" class="btn btn-grande" data-accion="saludar">${esc(T.elEscribir)}</button>
+         <div class="portada-pie">
+           <div><button type="button" class="enlace-flecha" data-accion="saludar">${esc(T.elEscribir)}<i>→</i></button></div>
+           <a class="cta-circulo" href="#mosaico" data-ir="mosaico">${esc(T.elVer)}</a>
          </div>`
       : `<p class="rotulo">Sorpresa de cumpleaños · ${f}</p>
-         <h1>${esc(h.nombre)} cumple lejos de casa. <em>Llevémosle la casa.</em></h1>
-         <p class="bajada">Déjale un mensaje, fotos, un video, un audio o una canción. O todo junto. Toma dos minutos y no necesitas crear ninguna cuenta.</p>
-         <p class="cuenta">${cuenta}</p>
-         <div class="portada-acciones">
-           <button type="button" class="btn btn-haz btn-grande" data-accion="saludar">${ico('mas')}Dejar mi saludo</button>
-           <a class="btn btn-grande" href="#mosaico" data-ir="mosaico">Ver el mosaico</a>
+         <h1 class="palabra"><span>Misión</span><span class="lado">Cumple lejos. Llevémosle la casa.</span><span class="l2">${nombre}</span></h1>
+         <ul class="vinetas"><li>Mensajes</li><li>Videos</li><li>Fotos</li><li>Audios</li><li>Canciones</li></ul>
+         <p class="bajada">Déjale una cosa o varias. Toma dos minutos y no necesitas crear ninguna cuenta.</p>
+         <div class="portada-pie">
+           <div><p class="cuenta">${cuenta}</p><a class="enlace-flecha" href="#mosaico" data-ir="mosaico">Ver el mosaico<i>→</i></a></div>
+           <button type="button" class="cta-circulo" data-accion="saludar">Dejar mi saludo</button>
          </div>`;
 
-    return `<div class="portada cielo-alto">
-        <div class="columna portada-texto">${portada}</div>
-        <figure class="portada-marco"><img class="portada-foto" data-medio="${esc(C.portada.medio)}" alt="${esc(C.portada.alt)}"></figure>
-      </div>
-      <p class="portada-pie">${esc(C.portada.pie)}</p>
+    return `<div class="portada espacio"><div class="columna portada-texto">${portada}</div></div>
       <div class="columna">
         ${esEl() ? '' : `
-        <div class="secreto" style="margin-top:1.75rem">${pieza('♞')}<p><b>Es sorpresa.</b> No le reenvíes este enlace a ${esc(h.nombre)}: él recibirá el suyo el ${f}.</p></div>
-        ${altitud('Tropopausa', '17 km')}
+        <div class="secreto">${pieza('♞')}<p><b>Es sorpresa.</b> No le reenvíes este enlace a ${nombre}: él recibirá el suyo el ${f}.</p></div>
         <section class="seccion">
-          <h2>Tres pasos y listo</h2>
+          <h2>Cómo sumarte</h2>
           <ol class="como">
-            <li><div><b>Dinos quién eres</b><span>Solo tu nombre, para que ${esc(h.nombre)} sepa de quién viene.</span></div></li>
+            <li><div><b>Dinos quién eres</b><span>Solo tu nombre, para que ${nombre} sepa de quién viene.</span></div></li>
             <li><div><b>Elige qué dejarle</b><span>Unas palabras, fotos, un video, un audio, una canción. Una cosa o varias.</span></div></li>
             <li><div><b>Envía</b><span>Tu saludo se suma al mosaico al instante.</span></div></li>
           </ol>
         </section>`}
-        ${altitud('Troposfera libre', '9 km')}
         <section class="seccion">
           <p class="rotulo">${esc(C.ficha.rotulo)}</p>
           <h2>${esc(C.ficha.titulo)}</h2>
-          <div class="ficha">${C.ficha.lineas.map(l => `<div>${pieza(l.pieza)}<p><b>${esc(l.titulo)}</b><span>${esc(l.texto)}</span></p></div>`).join('')}</div>
+          <div class="ficha-rejilla">
+            <figure class="ficha-foto"><img data-medio="${esc(C.portada.medio)}" alt="${esc(C.portada.alt)}" width="1080" height="1080"><figcaption>${esc(C.portada.pie)}</figcaption></figure>
+            <div class="ficha">${C.ficha.lineas.map(l => `<div>${pieza(l.pieza)}<p><b>${esc(l.titulo)}</b><span>${esc(l.texto)}</span></p></div>`).join('')}</div>
+          </div>
         </section>
-        ${altitud('Chacaltaya', '5 240 m')}
         <section class="carta">
           <p class="rotulo">${esc(C.carta.rotulo)}</p>
+          <h2>${esc(C.carta.titulo)}</h2>
           ${C.carta.bloques.map(htmlBloqueCarta).join('')}
         </section>
-        <footer class="pie">${CORDILLERA}<span class="cota">La Paz · 3 640 m s.n.m.</span><span>${esc(C.pie)}</span></footer>
-      </div>`;
+      </div>
+      <footer class="pie-nave espacio"><div class="columna">
+        <div class="pie-marca"><span class="logo grande" aria-hidden="true">${esc(h.nombre.charAt(0))}</span><b>${esc(C.marca)}</b><p>Sorpresa de cumpleaños · ${f}</p></div>
+        <nav class="pie-col" aria-label="Secciones"><h4>Navegación</h4><a href="#mosaico" data-ir="mosaico">Mosaico</a><a href="#saludos" data-ir="saludos">Saludos</a><a href="#foro" data-ir="foro">Foro</a></nav>
+        <div class="pie-col"><h4>${esc(C.despedida.titulo)}</h4>${C.despedida.lineas.map(l => `<span>${esc(l)}</span>`).join('')}</div>
+        <div class="pie-fin"><span>${esc(C.pie)}</span><span>${esc(C.despedida.fecha)}</span></div>
+      </div></footer>`;
   }
 
   // ---------- mosaico: cada cosa que alguien deja es una pieza ----------
@@ -449,7 +444,7 @@
   function vistaMosaico() {
     const P = piezasMosaico(), h = C.homenajeado;
     const huecos = esEl() ? '' : `
-      <button type="button" class="tesela hueco w2 h1" style="--w:2;--h:1" data-accion="ir-pieza" data-destino="saludar">${ico('mas')}Tu pieza va aquí</button>
+      <button type="button" class="tesela hueco w2 h1" style="--w:2;--h:1" data-accion="ir-pieza" data-destino="saludar">${ico('mas')}${esc(C.textos.hueco)}</button>
       <button type="button" class="tesela hueco w1 h1" style="--w:1;--h:1" data-accion="ir-pieza" data-destino="saludar" aria-label="Agregar una pieza">${ico('mas')}</button>
       <button type="button" class="tesela hueco w1 h1" style="--w:1;--h:1" data-accion="ir-pieza" data-destino="saludar" aria-label="Agregar una pieza">${ico('mas')}</button>`;
     return `<div class="columna ancha">
@@ -492,7 +487,7 @@
     const msjs = id => posts.filter(p => p.seccion === 'foro' && p.tema === id && (esAdmin || !p.oculto));
     if (!temaAbierto) {
       return `<div class="columna">
-        <header class="cab-vista"><p class="rotulo">Centro urbano</p><h2>${esc(C.foro.titulo)}</h2><p>${esc(C.foro.texto)}</p></header>
+        <header class="cab-vista"><p class="rotulo">Puente de mando</p><h2>${esc(C.foro.titulo)}</h2><p>${esc(C.foro.texto)}</p></header>
         <div class="temas">${temas.map(t => {
           const m = msjs(t.id), ult = m[m.length - 1];
           return `<button type="button" class="tema ${t.soloFamilia ? 'privado' : ''}" data-accion="abrir-tema" data-tema="${t.id}">
@@ -729,6 +724,7 @@
       </form>`;
     } else {
       html = `<div class="paso listo">${pieza('♞')}
+        <p class="rotulo">${soyEl ? 'Transmisión enviada' : '¡Bazinga! Saludo enviado'}</p>
         <h2 id="as-titulo">${soyEl ? 'Publicado' : `¡Gracias, ${esc(yo.nombre)}!`}</h2>
         <p>${soyEl ? 'Ya lo pueden ver todos.' : `Tu saludo ya es parte del mosaico. ${esc(h.nombre)} lo verá el ${fechaDia(h.fecha)}.`}</p>
         <button type="button" class="btn btn-haz btn-grande" data-accion="ver-mosaico">Ver el mosaico</button>
@@ -1002,6 +998,8 @@
   function mostrarTelon() {
     const T = C.textos, h = C.homenajeado, n = posts.filter(p => p.seccion === 'saludo' && !p.oculto).length;
     $('#telon-rotulo').textContent = fechaDia(h.fecha);
+    $('#telon-intro').textContent = T.telonIntro;
+    $('#telon-firma').textContent = T.telonFirma;
     $('#telon-titulo').textContent = `${T.elTitulo} ${h.nombre}`;
     $('#telon-texto').textContent = n ? T.telon.replace('{saludos}', plural(n, 'saludo', 'saludos')) : T.telonVacio;
     const t = $('#telon'); t.classList.remove('saliendo'); t.hidden = false;
@@ -1019,44 +1017,99 @@
   // ---------- las gatas, Pura y Tapioca: aparecen de rato en rato, porque sí ----------
   const gatos = (() => {
     const PELAJE = {
-      atigrado: { nombre: 'Pura', base: '#8f9199', sombra: '#70727a', raya: '#3c3e46', claro: '#dfe0e5', pata: '#9d9fa7', oreja: '#dba3aa', nariz: '#c98078', ojo: '#a8c56b', bigote: '#ffffff', parpado: '#2f3138' },
-      esmoquin: { nombre: 'Tapioca', base: '#1f1c22', sombra: '#0f0d11', raya: '#1f1c22', claro: '#faf8f3', pata: '#faf8f3', oreja: '#7a5560', nariz: '#4a3d42', ojo: '#b5d27e', bigote: '#ffffff', parpado: '#b5d27e' }
+      pura: { nombre: 'Pura', base: '#9a8b78', medio: '#84766a', sombra: '#6d6055', raya: '#2f2620', claro: '#e9dcc6', crema: '#f4ead8', pata: '#a59682', oreja: '#d9a79a', nariz: '#b8604c', narizBorde: '#3a2a22', ojo: '#b6c182', ojoBorde: '#2a211b', bigote: '#fffaf0', contorno: 'none' },
+      tapioca: { nombre: 'Tapioca', base: '#1d1b20', medio: '#2b282e', sombra: '#0c0b0e', raya: '#1d1b20', claro: '#fbfaf6', crema: '#fbfaf6', pata: '#fbfaf6', oreja: '#5a3f47', nariz: '#2a2428', narizBorde: '#0c0b0e', ojo: '#a9c98a', ojoBorde: '#0c0b0e', bigote: '#ffffff', contorno: '#b9b4ab' }
     };
-    function cabeza(k, dormido) {
-      const p = PELAJE[k];
-      const ojo = x => dormido
-        ? `<path d="M${x - 5} -3q5 4.500 10 0" fill="none" stroke="${p.parpado}" stroke-width="1.8" stroke-linecap="round"/>`
-        : `<ellipse cx="${x}" cy="-3" rx="5.4" ry="5.9" fill="${p.ojo}"/><ellipse cx="${x}" cy="-3" rx="1.8" ry="4.700" fill="#15110f"/><circle cx="${x + 1.6}" cy="-5.200" r="1.100" fill="#fff"/>`;
-      const marcas = k === 'atigrado'
-        ? `<path d="M-8 -21v8M0 -23v9M8 -21v8M-27 2l8 1.500M-26 9l7 -.500M27 2l-8 1.500M26 9l-7 -.500" fill="none" stroke="${p.raya}" stroke-width="2.500" stroke-linecap="round"/><ellipse cx="0" cy="10" rx="12" ry="8" fill="${p.claro}"/>`
-        : `<path d="M-16 21C-19 8-7 3 0 -3C7 3 19 8 16 21C8 25-8 25-16 21Z" fill="${p.claro}"/>`;
-      return `<path d="M-25 -8L-27 -33L-7 -19Z" fill="${p.base}"/><path d="M-22.500 -13L-23.500 -27L-12 -19Z" fill="${p.oreja}"/>
-        <path d="M25 -8L27 -33L7 -19Z" fill="${p.base}"/><path d="M22.500 -13L23.500 -27L12 -19Z" fill="${p.oreja}"/>
-        <ellipse cx="0" cy="0" rx="28" ry="23" fill="${p.base}"/>${marcas}${ojo(-11)}${ojo(11)}
-        <path d="M-3.200 6h6.400l-3.200 3.800z" fill="${p.nariz}"/>
-        <path d="M0 9.800q-3.500 4.500-7 1.500M0 9.800q3.500 4.500 7 1.500" fill="none" stroke="#2a2022" stroke-width="1.200" stroke-linecap="round"/>
-        <path d="M-9 10L-31 6M-9 12L-32 12.500M-9 14L-30 19M9 10L31 6M9 12L32 12.500M9 14L30 19" fill="none" stroke="${p.bigote}" stroke-width=".9" stroke-linecap="round" opacity=".9"/>`;
+
+    // Cabeza de frente. Origen en el centro de la cara; mide unos 92 x 96.
+    function cabeza(k) {
+      const p = PELAJE[k], T = k === 'tapioca';
+      const ojo = s => `<g transform="translate(${s * 19} -3)">
+          <path d="M-13 1C-8 -8 6 -9 13 0C7 8 -7 9 -13 1Z" fill="${p.ojo}" stroke="${p.ojoBorde}" stroke-width="1.8" stroke-linejoin="round" transform="scale(${s} 1)"/>
+          <ellipse cx="0" cy="0" rx="${T ? 3.6 : 2.6}" ry="6.2" fill="#0d0b0a"/>
+          <circle cx="${2.2}" cy="-2.6" r="1.5" fill="#fff" opacity=".9"/>
+          ${T ? `<path d="M-15 -11H15V-2.200C7 -4.200 -7 -4.200 -15 -1.600Z" fill="${p.base}"/><path d="M-13.500 -1.900C-7 -4.300 7 -4.300 13.500 -2.300" fill="none" stroke="${p.ojoBorde}" stroke-width="1.600" stroke-linecap="round"/>` : ''}
+        </g>`;
+      const marcas = T
+        ? `<path d="M0 -8C-3 4 -16 13 -27 24C-25 38 -12 45 0 46C12 45 25 38 27 24C16 13 3 4 0 -8Z" fill="${p.claro}"/>
+           <path d="M-1.500 -30C-2.500 -20 -1.500 -12 0 -8C1.500 -12 2.500 -20 1.500 -30Z" fill="${p.claro}" opacity=".85"/>
+           <path d="M-8 6C-4 2 4 2 8 6C6 14 -6 14 -8 6Z" fill="${p.base}"/>`
+        : `<path d="M-13 -36L-11 -20M0 -38V-21M13 -36L11 -20M-25 -30C-21 -26 -19 -20 -19 -15M25 -30C21 -26 19 -20 19 -15" fill="none" stroke="${p.raya}" stroke-width="3" stroke-linecap="round"/>
+           <path d="M-33 -1C-39 2 -43 8 -45 14M33 -1C39 2 43 8 45 14M-44 22C-38 21 -33 23 -29 27M44 22C38 21 33 23 29 27M-41 31C-36 31 -32 33 -29 36M41 31C36 31 32 33 29 36" fill="none" stroke="${p.raya}" stroke-width="2.600" stroke-linecap="round"/>
+           <path d="M-34 -4C-26 -16 -8 -16 -4 -4C-8 8 -28 8 -34 -4ZM34 -4C26 -16 8 -16 4 -4C8 8 28 8 34 -4Z" fill="${p.claro}" opacity=".55"/>
+           <path d="M0 4C-12 8 -24 16 -24 26C-22 38 -10 44 0 44C10 44 22 38 24 26C24 16 12 8 0 4Z" fill="${p.crema}"/>`;
+      const bigotes = (T
+        ? ['M-14 22L-62 8', 'M-15 25L-66 22', 'M-15 28L-63 36', 'M-13 31L-54 48', 'M-25 -15L-40 -33', 'M-20 -16L-31 -37']
+        : ['M-15 23L-58 14', 'M-15 26L-60 27', 'M-14 29L-55 40', 'M-22 -15L-36 -34'])
+        .map(d => `<path d="${d}"/><path d="${d}" transform="scale(-1 1)"/>`).join('');
+      return `
+        <path d="M-45 -6C-47 -22 -47 -40 -42 -57C-30 -52 -19 -43 -12 -33Z" fill="${p.base}"/>
+        <path d="M45 -6C47 -22 47 -40 42 -57C30 -52 19 -43 12 -33Z" fill="${p.base}"/>
+        <path d="M-40 -18C-41 -30 -40 -40 -38 -48C-30 -43 -23 -37 -18 -30Z" fill="${p.oreja}"/>
+        <path d="M40 -18C41 -30 40 -40 38 -48C30 -43 23 -37 18 -30Z" fill="${p.oreja}"/>
+        <path d="M-36 -22L-30 -36M-32 -19L-25 -32M36 -22L30 -36M32 -19L25 -32" fill="none" stroke="${T ? p.medio : p.crema}" stroke-width="1.600" stroke-linecap="round" opacity=".8"/>
+        <path d="M0 -38C20 -38 40 -28 45 -8C49 6 46 20 38 30C28 42 14 47 0 47C-14 47 -28 42 -38 30C-46 20 -49 6 -45 -8C-40 -28 -20 -38 0 -38Z" fill="${p.base}"/>
+        ${marcas}${ojo(-1)}${ojo(1)}
+        <path d="M-6.500 12C-3 10.500 3 10.500 6.500 12C5 17.500 1.500 19.500 0 19.500C-1.500 19.500 -5 17.500 -6.500 12Z" fill="${p.nariz}" stroke="${p.narizBorde}" stroke-width="1.200" stroke-linejoin="round"/>
+        ${T ? `<path d="M-3 12.500C-1 11.800 1.500 11.800 3 12.600" fill="none" stroke="#8d868c" stroke-width="1.400" stroke-linecap="round"/>` : ''}
+        <path d="M0 19.500V25M0 25C-3 31 -10 31 -13 26M0 25C3 31 10 31 13 26" fill="none" stroke="${T ? '#3b3338' : '#4a372d'}" stroke-width="1.500" stroke-linecap="round" stroke-linejoin="round"/>
+        <g fill="none" stroke="${p.bigote}" stroke-width="1.100" stroke-linecap="round" opacity=".95">${bigotes}</g>`;
     }
-    function sentado(k) {
-      const p = PELAJE[k];
-      const rayas = k === 'atigrado' ? `<path d="M29 84q6-2 9 2M28 95q7-2 10 2M71 84q-6-2-9 2M72 95q-7-2-10 2" fill="none" stroke="${p.raya}" stroke-width="2.400" stroke-linecap="round"/>` : '';
-      return `<svg viewBox="0 0 100 112" width="100%"><path class="cola" d="M72 99C96 101 99 79 88 69" fill="none" stroke="${p.base}" stroke-width="9" stroke-linecap="round"/>
-        <g class="cuerpo-gato"><path d="M27 107C20 83 30 57 50 57C70 57 80 83 73 107Z" fill="${p.base}"/>
-          <path d="M41 107C37 89 42 69 50 64C58 69 63 89 59 107Z" fill="${p.claro}"/>${rayas}
-          <ellipse cx="41" cy="106" rx="8" ry="5" fill="${p.pata}" stroke="${p.sombra}" stroke-opacity=".35"/><ellipse cx="59" cy="106" rx="8" ry="5" fill="${p.pata}" stroke="${p.sombra}" stroke-opacity=".35"/>
-          <g transform="translate(50 35)">${cabeza(k, true)}</g></g></svg>`;
+
+    // Sentada, erguida y mirando de frente, como en la foto de Pura.
+    function sentada(k) {
+      const p = PELAJE[k], T = k === 'tapioca';
+      const linea = T ? p.medio : p.sombra;
+      const pelaje = T
+        ? `<path d="M68 100C60 124 68 152 84 166C92 172 100 172 108 166C124 152 132 124 124 100C106 110 86 110 68 100Z" fill="${p.claro}"/>`
+        : `<path d="M72 106C66 126 70 152 82 170C90 176 100 176 108 170C118 152 120 126 116 106C102 112 86 112 72 106Z" fill="${p.claro}" opacity=".38"/>
+           <path d="M66 118C84 129 104 129 122 118M64 134C84 146 106 146 124 134" fill="none" stroke="${p.raya}" stroke-width="3" stroke-linecap="round"/>
+           <path d="M136 132C150 150 156 172 152 196M150 152C162 170 166 192 162 214M124 120C136 140 140 164 138 186M54 132C50 146 50 160 52 172" fill="none" stroke="${p.raya}" stroke-width="3.400" stroke-linecap="round"/>`;
+      const pata = x => `<path d="M${x + 2} 150C${x} 182 ${x + 1} 214 ${x} 238C${x + 1} 248 ${x + 25} 248 ${x + 26} 238C${x + 25} 214 ${x + 26} 182 ${x + 24} 150Z" fill="${p.base}" stroke="${linea}" stroke-width="1.600" stroke-linejoin="round"/>
+          ${T ? `<path d="M${x + .5} 218C${x} 228 ${x} 234 ${x} 238C${x + 1} 248 ${x + 25} 248 ${x + 26} 238C${x + 26} 230 ${x + 26} 224 ${x + 25.500} 218C${x + 17} 214 ${x + 9} 214 ${x + .5} 218Z" fill="${p.pata}" stroke="${p.contorno}" stroke-width="1.200"/>`
+              : `<path d="M${x + 2} 172H${x + 24}M${x + 1.500} 188H${x + 24.500}M${x + 1} 204H${x + 25}M${x + 1} 220H${x + 25}" fill="none" stroke="${p.raya}" stroke-width="3" stroke-linecap="round"/>`}
+          <path d="M${x + 9} 240V246M${x + 17} 240V246" fill="none" stroke="${T ? '#c9c4bb' : p.sombra}" stroke-width="1.400" stroke-linecap="round"/>`;
+      return `<svg viewBox="0 -10 200 260" width="100%">
+        <path class="cola" d="M168 238C150 246 126 246 108 240" fill="none" stroke="${p.base}" stroke-width="13" stroke-linecap="round"/>
+        ${T ? '' : `<path class="cola" d="M168 238C150 246 126 246 108 240" fill="none" stroke="${p.raya}" stroke-width="13" stroke-dasharray="5 9" stroke-dashoffset="4"/>`}
+        <g class="cuerpo-gato">
+          <path d="M62 96C48 118 44 160 50 204L54 244H160C178 236 184 204 174 172C164 140 144 112 130 96Z" fill="${p.base}"/>
+          <path d="M128 100C146 118 162 146 170 176C178 204 174 232 160 244H132C150 218 150 160 128 100Z" fill="${p.sombra}" opacity="${T ? .5 : .28}"/>
+          ${pelaje}${pata(60)}${pata(88)}
+          <path d="M62 96C78 110 112 110 130 96C118 90 76 90 62 96Z" fill="${p.sombra}" opacity=".3"/>
+          <g transform="translate(96 56)">${cabeza(k)}</g>
+        </g></svg>`;
     }
+
+    // Caminando de lado, con la cabeza vuelta hacia quien mira.
     function paseando(k) {
-      const p = PELAJE[k];
-      const pata = (x, lejos, fase) => `<g class="pata ${fase}"><rect x="${x}" y="52" width="10" height="31" rx="5" fill="${lejos ? p.sombra : p.base}"/><rect x="${x}" y="74" width="10" height="9" rx="4.500" fill="${k === 'esmoquin' ? p.pata : (lejos ? p.sombra : p.pata)}"/></g>`;
-      const pelaje = k === 'atigrado'
-        ? `<path d="M56 33q-3 10 1 21M68 31q-3 12 1 24M80 31q-3 12 1 24M92 34q-2 9 1 18" fill="none" stroke="${p.raya}" stroke-width="3" stroke-linecap="round"/>`
-        : `<path d="M88 67C94 53 110 50 113 58C111 67 100 71 88 67Z" fill="${p.claro}"/>`;
-      return `<svg viewBox="0 0 150 90" width="100%"><path class="cola" d="M38 47C16 46 10 28 18 12" fill="none" stroke="${p.base}" stroke-width="8" stroke-linecap="round"/>
-        ${pata(46, true, 'b')}${pata(100, true, '')}
-        <g class="tronco"><ellipse cx="76" cy="50" rx="40" ry="19" fill="${p.base}"/>${pelaje}</g>
-        ${pata(56, false, '')}${pata(108, false, 'b')}
-        <g class="tronco"><g transform="translate(118 33) scale(.8)">${cabeza(k, false)}</g></g></svg>`;
+      const p = PELAJE[k], T = k === 'tapioca';
+      const pata = (x, lejos, fase, trasera) => {
+        const col = lejos ? p.sombra : p.base;
+        const forma = trasera
+          ? 'M-13 -6C-16 12 -3 24 -7 40C-9 50 -7 58 -8 63C-9 66 -11 67 -11 69H9C10 64 6 61 6 55C6 44 13 30 13 12C13 4 11 -2 9 -8Z'
+          : 'M-8 -2C-9 20 -4 38 -6 56C-7 61 -9 63 -9 65H9C10 61 7 59 6 54C6 38 9 20 8 -2Z';
+        const y = trasera ? 52 : 48, fin = trasera ? 69 : 65;
+        return `<g transform="translate(${x} ${trasera ? 98 : 102})"><g class="pata ${fase}">
+          <path d="${forma}" fill="${col}"/>
+          ${T ? `<path d="M-7.500 ${y}C-9 ${y + 8} -10 ${fin - 3} -10 ${fin}H9C10 ${fin - 4} 7 ${fin - 6} 6.500 ${y}Z" fill="${lejos ? '#d5d1c8' : p.pata}"/>`
+              : `<path d="M-7 ${trasera ? 30 : 16}H7M-6.500 ${trasera ? 42 : 28}H6.500M-6.500 ${trasera ? 53 : 40}H6.500" fill="none" stroke="${p.raya}" stroke-width="2.800" stroke-linecap="round" opacity="${lejos ? .45 : 1}"/>`}
+        </g></g>`;
+      };
+      const pelaje = T
+        ? `<path d="M176 114C172 98 188 82 208 84C216 96 212 110 198 118C190 122 180 120 176 114Z" fill="${p.claro}"/>`
+        : `<path d="M92 66C86 82 88 100 94 112M108 62C102 80 103 100 109 114M124 61C118 80 119 100 125 115M140 61C134 80 135 100 141 115M156 62C151 80 152 98 157 113M172 65C168 80 169 95 173 107" fill="none" stroke="${p.raya}" stroke-width="3.600" stroke-linecap="round"/>
+           <path d="M70 108C100 121 160 121 198 106C190 118 150 124 112 122C92 122 76 116 70 108Z" fill="${p.claro}" opacity=".5"/>`;
+      return `<svg viewBox="0 0 260 178" width="100%">
+        <path class="cola" d="M70 86C44 84 28 62 34 34C36 24 46 22 48 32" fill="none" stroke="${p.base}" stroke-width="12" stroke-linecap="round"/>
+        ${T ? '' : `<path class="cola" d="M70 86C44 84 28 62 34 34C36 24 46 22 48 32" fill="none" stroke="${p.raya}" stroke-width="12" stroke-dasharray="5 10" stroke-dashoffset="2"/>`}
+        ${pata(92, true, 'b', true)}${pata(182, true, '', false)}
+        <g class="tronco">
+          <path d="M62 84C74 62 110 57 150 59C178 59 202 64 210 80C216 96 208 112 192 118C172 125 132 119 110 121C88 123 64 117 58 103C56 96 58 89 62 84Z" fill="${p.base}"/>
+          ${pelaje}
+        </g>
+        ${pata(76, false, '', true)}${pata(196, false, 'b', false)}
+        <g class="tronco"><g transform="translate(214 56) scale(.66)">${cabeza(k)}</g></g></svg>`;
     }
 
     const caja = $('#gatos');
@@ -1073,7 +1126,7 @@
     }
     function botonCerca() {
       const raiz = !$('#asistente').hidden ? $('#asistente') : $('#app');
-      const c = $$('.btn-haz, .btn-grande, .tema, .hueco.w2, .chip', raiz).filter(b => {
+      const c = $$('.cta-circulo, .btn-haz, .btn-grande, .tema, .hueco.w2, .chip', raiz).filter(b => {
         const r = b.getBoundingClientRect();
         return r.width >= 56 && r.top > 150 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth;
       });
@@ -1090,13 +1143,13 @@
     }
     function sentar(k, boton) {
       const el = document.createElement('div');
-      el.className = 'gato sentado'; el.innerHTML = sentado(k);
+      el.className = 'gato sentado'; el.innerHTML = sentada(k);
       caja.appendChild(el); decir(el, 'prrr…', 0);
       const irse = () => { if (!actual || actual.el !== el) return; el.classList.add('yendose'); setTimeout(quitar, 420); };
       const seguir = () => {
         const r = boton.isConnected ? boton.getBoundingClientRect() : null;
         if (!r || !r.width || r.top < 110 || r.bottom > innerHeight + 8) return irse();
-        el.style.left = Math.max(4, r.right - el.offsetWidth - Math.min(18, r.width * .12)) + 'px';
+        el.style.left = (boton.classList.contains('cta-circulo') ? r.left + (r.width - el.offsetWidth) / 2 : Math.max(4, r.right - el.offsetWidth - Math.min(18, r.width * .12))) + 'px';
         el.style.top = (r.top - el.offsetHeight + 7) + 'px';
         actual.raf = requestAnimationFrame(seguir);
       };
@@ -1106,7 +1159,7 @@
     }
     function aparecer(k, modo) {
       if (actual) quitar();
-      k = { pura: 'atigrado', tapioca: 'esmoquin' }[String(k || '').toLowerCase()] || k || (Math.random() < .5 ? 'atigrado' : 'esmoquin');
+      k = String(k || '').toLowerCase(); if (!PELAJE[k]) k = Math.random() < .5 ? 'pura' : 'tapioca';
       const boton = modo === 'pasear' ? null : botonCerca();
       if (boton && (modo === 'sentar' || sinMovimiento || Math.random() < .55)) sentar(k, boton);
       else if (!sinMovimiento) pasear(k);
@@ -1140,7 +1193,7 @@
         const guardada = guarda.get('llave');
         if (!textoClave && guardada) llave = await crypto.subtle.importKey('raw', b64(guardada), 'AES-GCM', false, ['decrypt']);
         else llave = await abrirLlave(textoClave);
-        C = JSON.parse(new TextDecoder().decode(await descifrar('contenido.bin')));
+        C = JSON.parse(new TextDecoder().decode(await descifrar('contenido.bin', true)));
       } catch (e) {
         guarda.del('llave');
         if (e && e.message === 'no_encontrado' || e instanceof TypeError) throw new Error('sin_datos');
@@ -1151,6 +1204,7 @@
     guarda.set('clave', clave);
     document.title = C.tituloPestana;
     $('#marca-texto').textContent = C.marca;
+    $('#logo-letra').textContent = C.homenajeado.nombre.charAt(0);
     $('#puerta').hidden = true; $('#app').hidden = false;
     const demo = $('#aviso-demo');
     if (!NUBE) { demo.hidden = false; demo.textContent = PREVIA ? 'Vista previa: lo que publiques aquí es de prueba y solo lo ves tú.' : 'Modo de prueba: falta conectar la base de datos. Lo que publiques solo se guarda en este dispositivo.'; }

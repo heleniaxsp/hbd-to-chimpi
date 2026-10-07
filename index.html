@@ -4,15 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<meta name="theme-color" content="#060f2c">
+<meta name="theme-color" content="#1f4466">
 <title>Una sorpresa</title>
 <meta property="og:title" content="Una sorpresa">
 <meta property="og:description" content="Abre el enlace para sumarte.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2308173d'/%3E%3Cpath d='M8 52 56 14' stroke='%233fe08a' stroke-width='5' stroke-linecap='round'/%3E%3Ccircle cx='10' cy='51' r='6' fill='%23eafff0'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231f4466'/%3E%3Ccircle cx='32' cy='32' r='19' fill='none' stroke='%23f3c19b' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='6' fill='%23c9601a'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bodoni+Moda:ital,opsz,wght@1,6..96,500&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=DM+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="estilos.css?v=muy8vvao">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@1,6..96,500&family=Manrope:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="estilos.css?v=muya3vsx">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
@@ -44,11 +44,10 @@
 </svg>
 
 <!-- Puerta: lo único que ve quien llega sin la palabra clave -->
-<div id="puerta" class="puerta cielo-alto">
-  <div class="puerta-cielo" aria-hidden="true"><span class="haz haz-puerta"></span></div>
+<div id="puerta" class="puerta espacio">
   <form id="puerta-form" class="puerta-caja" autocomplete="off">
-    <p class="rotulo">Sorpresa en preparación</p>
-    <h1>Hay una sorpresa esperando aquí.</h1>
+    <p class="rotulo">Transmisión cifrada</p>
+    <h1>Hay una sorpresa</h1>
     <p class="puerta-ayuda">Si te invitaron, escribe la palabra clave que venía en el mensaje.</p>
     <label class="campo">
       <span>Palabra clave</span>
@@ -61,7 +60,7 @@
 
 <div id="app" hidden>
   <header class="barra">
-    <a class="marca" href="#inicio" data-ir="inicio"><span class="marca-pieza" aria-hidden="true">&#9822;&#xFE0E;</span><span id="marca-texto">Sorpresa</span></a>
+    <a class="marca" href="#inicio" data-ir="inicio"><span class="logo" id="logo-letra" aria-hidden="true">R</span><span id="marca-texto">Sorpresa</span></a>
     <a class="barra-panel" href="#panel" data-ir="panel" data-solo-admin hidden><svg class="ico"><use href="#i-panel"/></svg>Panel</a>
     <nav class="nav-ancha" aria-label="Secciones">
       <a href="#inicio" data-ir="inicio">Inicio</a>
@@ -105,13 +104,14 @@
 </div>
 
 <!-- Entrada especial para el homenajeado -->
-<div id="telon" class="telon cielo-alto" hidden>
-  <span class="haz haz-telon" aria-hidden="true"></span>
+<div id="telon" class="telon espacio" hidden>
   <div class="telon-caja">
     <p class="rotulo" id="telon-rotulo"></p>
+    <p class="telon-intro" id="telon-intro"></p>
     <h1 id="telon-titulo"></h1>
     <p id="telon-texto"></p>
     <button type="button" class="btn btn-haz btn-grande" id="telon-abrir">Abrir mi sorpresa</button>
+    <p class="telon-firma" id="telon-firma"></p>
   </div>
 </div>
 
@@ -119,7 +119,7 @@
 <div id="tostada" class="tostada" role="status" aria-live="polite" hidden></div>
 <div id="gatos" class="gatos" aria-hidden="true"></div>
 
-<script src="config.js?v=muy8vvao"></script>
-<script src="app.js?v=muy8vvao"></script>
+<script src="config.js?v=muya3vsx"></script>
+<script src="app.js?v=muya3vsx"></script>
 </body>
 </html>
