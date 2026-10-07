@@ -1150,7 +1150,17 @@
         <path d="M-2 11C-4 14 -4 18 -2 21" fill="none" stroke="#ad500f" stroke-width="1.100" stroke-linecap="round"/><circle cx="7.500" cy="14.500" r="1.300" fill="#173650"/>`
     };
     const juguete = t => `<g class="tronco"><g transform="translate(214 75) scale(1.5)"><g class="juguete">${JUGUETES[t]}</g></g></g>`;
-    const unJuguete = () => { const t = Object.keys(JUGUETES); return t[Math.floor(Math.random() * t.length)]; };
+    const SUYOS = { pura: ['ovillo', 'pez'], tapioca: ['raton', 'pez'] };       // cada una tiene los suyos
+    const juguetePropio = (k, solo) => solo ? SUYOS[k][Math.floor(Math.random() * SUYOS[k].length)] : SUYOS[k][0];
+    const ESPIRALES = `<g class="espirales">${[-1, 1].map(s => `<g transform="translate(${s * 19} -3)"><circle r="13" fill="#fff" stroke="#173650" stroke-width="1.600"/><g class="giro"><path d="M0 0a2.200 2.200 0 0 1 4.400 0a4.400 4.400 0 0 1 -8.800 0a6.600 6.600 0 0 1 13.200 0a8.800 8.800 0 0 1 -17.600 0" fill="none" stroke="#c9601a" stroke-width="2.800" stroke-linecap="round"/></g></g>`).join('')}</g>`;
+    // Bichos voladores que las hipnotizan
+    const BICHOS = {
+      mariposa: (() => { const ala = `<g class="ala"><path d="M0 -2C-6 -16 -19 -15 -17 -4C-16 2 -8 3 0 0Z" fill="#c9601a" stroke="#7a3508" stroke-width="1"/><path d="M0 1C-8 2 -15 6 -12 12C-9 16 -3 12 0 4Z" fill="#f3c19b" stroke="#7a3508" stroke-width="1"/><circle cx="-11" cy="-6" r="2.200" fill="#fbe9da"/></g>`;
+        return `<svg viewBox="-20 -17 40 34">${ala}<g transform="scale(-1 1)">${ala}</g><path d="M0 -6V8" stroke="#173650" stroke-width="2.600" stroke-linecap="round"/><path d="M0 -6C-2 -10 -4 -12 -6 -12M0 -6C2 -10 4 -12 6 -12" fill="none" stroke="#173650" stroke-width="1" stroke-linecap="round"/></svg>`; })(),
+      pajaro: `<svg viewBox="-22 -17 44 34"><path d="M-8 2L-21 -3L-18 6Z" fill="#557089"/><ellipse cx="0" cy="3" rx="11" ry="8" fill="#9db4c9" stroke="#557089" stroke-width="1"/><ellipse cx="2" cy="6.500" rx="6.500" ry="4" fill="#dfe8f0"/>
+        <circle cx="10" cy="-3" r="6.500" fill="#9db4c9" stroke="#557089" stroke-width="1"/><path d="M15.500 -4.500L22 -2.500L15.500 -.500Z" fill="#c9601a"/><circle cx="11.500" cy="-4.500" r="1.300" fill="#173650"/>
+        <g class="ala-p"><path d="M-3 1C-7 -13 6 -15 6 0Z" fill="#557089"/></g></svg>`
+    };
 
     function paseando(k, conJuguete) {
       const p = PELAJE[k], T = k === 'tapioca';
@@ -1179,7 +1189,7 @@
           ${pelaje}
         </g>
         ${pata(76, false, '', true)}${pata(196, false, 'b', false)}
-        <g class="tronco"><g transform="translate(214 56) scale(.66)">${cabeza(k)}</g></g>${conJuguete ? juguete(conJuguete) : ''}</svg>`;
+        <g class="tronco"><g transform="translate(214 56) scale(.66)">${cabeza(k)}${ESPIRALES}</g></g>${conJuguete ? juguete(conJuguete) : ''}</svg>`;
     }
 
     const caja = $('#gatos');
@@ -1208,16 +1218,29 @@
     }
     function crear(k, clase, svg) {
       const el = document.createElement('div');
-      el.className = 'gato ' + clase; el.innerHTML = svg;
+      el.className = 'gato ' + clase; el.innerHTML = svg; el.dataset.k = k;
       el.addEventListener('click', () => decir(el, `¡Miau! Soy ${PELAJE[k].nombre}`, 2000));
       caja.appendChild(el); return el;
+    }
+    // Un brinco en el sitio (sobre el dibujo, para no pelear con el desplazamiento)
+    function brincar(el, h = 30, ms = 520) {
+      const d = el.querySelector('svg'), f = el.classList.contains('izq') ? 'scaleX(-1) ' : '';
+      return d.animate([{ transform: f + 'translateY(0)' }, { transform: f + `translateY(${-h}px)`, offset: .45 }, { transform: f + 'translateY(0)' }], { duration: ms, easing: 'ease-out' }).finished;
+    }
+    function brincos(escena, el, cada = 1500, mas = 1700, h = 30) {
+      const otro = () => { if (actual !== escena || !el.isConnected) return; if (!el.classList.contains('quieto')) brincar(el, h * (.7 + Math.random() * .6)).catch(() => {}); escena.tiempos.push(setTimeout(otro, cada + Math.random() * mas)); };
+      escena.tiempos.push(setTimeout(otro, 600 + Math.random() * cada));
+    }
+    function destacar(b) {
+      b.classList.add('guino'); setTimeout(() => b.classList.remove('guino'), 1000);
+      try { b.animate([{ boxShadow: '0 0 0 0 rgba(201, 96, 26, .75)' }, { boxShadow: '0 0 0 18px rgba(201, 96, 26, 0)' }], { duration: 900, easing: 'ease-out' }); } catch { /* */ }
     }
     function pasear(k) {
       const el = crear(k, 'pasea' + (Math.random() < .5 ? ' izq' : ''), paseando(k));
       el.style.setProperty('--dur', (11 + innerWidth / 130) + 's');
       el.addEventListener('animationend', ev => { if (ev.animationName.startsWith('pasear')) quitar(); });
       el.addEventListener('click', () => { el.classList.add('quieto'); setTimeout(() => el.classList.remove('quieto'), 2000); });
-      actual = { els: [el] };
+      actual = { els: [el], tiempos: [] }; brincos(actual, el);
     }
     function sentar(k, boton) {
       const el = crear(k, 'sentado', sentada(k));
@@ -1271,46 +1294,100 @@
           await pausa(260); if (!viva()) return;
           await choque(); if (!viva()) return;
         }
-        await salto(L, xL, 16, 28, 430); if (!viva()) return;
-        await salto(R, xR, -12, 32, 460); if (!viva()) return;
+        await salto(L, xL, 16, 30, 430); if (!viva()) return;
+        await salto(R, xR, -12, 36, 460); if (!viva()) return;
+        await Promise.all([salto(L, xL, -10, 44, 520), salto(R, xR, 10, 40, 520)]); if (!viva()) return;
         await pausa(250); if (!viva()) return;
         const aDer = Math.random() < .5, huye = aDer ? R : L, sigue = aDer ? L : R, meta = aDer ? W + 40 : -w - 40;
         const xh = aDer ? xR : xL, xs = aDer ? xL : xR;
-        const robo = Math.random() < .5;   // a veces la que huye se lleva un juguete
+        const robo = Math.random() < .5;   // a veces cada una agarra su juguete antes de salir corriendo
         huye.classList.toggle('izq', !aDer); huye.classList.remove('quieto'); huye.classList.add('corre');
-        if (robo) huye.querySelector('svg').insertAdjacentHTML('beforeend', juguete(unJuguete())); else decir(huye, '¡a que no me alcanzas!', 1300);
+        if (robo) [huye, sigue].forEach(g => g.querySelector('svg').insertAdjacentHTML('beforeend', juguete(juguetePropio(g.dataset.k)))); decir(huye, '¡a que no me alcanzas!', 1300);
         const huida = mover(huye, xh, meta, Math.abs(meta - xh) / .3, 'ease-in');
         await pausa(320); if (!viva()) return;
-        sigue.classList.remove('quieto'); sigue.classList.add('corre'); if (robo) decir(sigue, '¡oye, eso es mío!', 1300);
+        sigue.classList.remove('quieto'); sigue.classList.add('corre'); decir(sigue, '¡ya verás!', 1100); brincos(escena, huye, 500, 600, 26); brincos(escena, sigue, 450, 600, 34);
         await Promise.all([huida, mover(sigue, xs, meta, Math.abs(meta - xs) / .28, 'ease-in')]);
         if (viva()) quitar();
       })().catch(() => { if (viva()) quitar(); });
     }
-    // Una cruza corriendo con un juguete en el hocico; a veces la otra sale detrás a reclamarlo.
+    // Cruzan corriendo con su juguete en el hocico: casi siempre una persigue a la otra; a veces va una sola.
     function correrConJuguete(k) {
       if (!PELAJE[k]) k = Math.random() < .5 ? 'pura' : 'tapioca';
       const otra = k === 'pura' ? 'tapioca' : 'pura', izq = Math.random() < .5, clase = 'suelto corre' + (izq ? ' izq' : '');
-      const a = crear(k, clase, paseando(k, unJuguete()));
+      const juntas = Math.random() < .65;
+      const a = crear(k, clase, paseando(k, juguetePropio(k, !juntas)));
       const escena = { els: [a], tiempos: [] }; actual = escena;
       const W = innerWidth, w = a.offsetWidth, de = izq ? W + 20 : -w - 20, hasta = izq ? -w - 60 : W + 60;
       const ms = Math.min(6500, Math.max(3000, Math.abs(hasta - de) / .26)), vel = Math.abs(hasta - de) / ms;
       const viva = () => actual === escena;
       const correr = (el, retraso) => { el.style.transform = `translateX(${de}px)`; return el.animate([{ transform: `translateX(${de}px)` }, { transform: `translateX(${hasta}px)` }], { duration: ms, delay: retraso, easing: 'linear', fill: 'both' }).finished; };
-      const carreras = [correr(a, 0)];
-      if (Math.random() < .6) {
-        const b = crear(otra, clase, paseando(otra)), retraso = w * 1.08 / vel; escena.els.push(b);
-        carreras.push(correr(b, retraso));
-        escena.tiempos.push(setTimeout(() => { if (viva()) decir(b, '¡oye, eso es mío!', 1500); }, retraso + ms * .28));
+      const carreras = [correr(a, 0)]; brincos(escena, a, 700, 800, 28);
+      if (juntas) {
+        const b = crear(otra, clase, paseando(otra, juguetePropio(otra))), retraso = w * 1.08 / vel; escena.els.push(b);
+        carreras.push(correr(b, retraso)); brincos(escena, b, 650, 700, 36);
+        escena.tiempos.push(setTimeout(() => { if (viva()) decir(b, '¡a que te alcanzo!', 1500); }, retraso + ms * .28));
       }
       Promise.all(carreras).then(() => { if (viva()) quitar(); }).catch(() => { if (viva()) quitar(); });
+    }
+
+    // Pasa una mariposa o un pajarito, las hipnotiza y las lleva de botón en botón.
+    function botonesGuia() {
+      if (!$('#asistente').hidden) return [];
+      const visible = b => { const r = b.getBoundingClientRect(); return r.width > 20 && r.height > 14 && r.top >= 0 && r.bottom <= innerHeight + 4 && r.left >= -4 && r.right <= innerWidth + 4; };
+      const barra = $$('.tabs a, .tabs button').filter(visible);
+      return barra.length ? barra : $$('.nav-ancha a, .nav-ancha .btn, #v-inicio .cta-circulo, #v-inicio .enlace-flecha').filter(b => !b.closest('[hidden]') && visible(b));
+    }
+    function hipnosis() {
+      const centro = b => { const r = b.getBoundingClientRect(); return r.left + r.width / 2; };
+      const aDer = Math.random() < .5, botones = botonesGuia().sort((x, y) => (centro(x) - centro(y)) * (aDer ? 1 : -1));
+      if (botones.length < 2) return false;
+      const ks = Math.random() < .5 ? ['pura', 'tapioca'] : ['tapioca', 'pura'];
+      const gs = (Math.random() < .5 ? ks : ks.slice(0, 1)).map(k => crear(k, 'suelto' + (aDer ? '' : ' izq'), paseando(k)));
+      const bicho = document.createElement('div'); bicho.className = 'bicho' + (aDer ? '' : ' izq');
+      bicho.innerHTML = `<span>${BICHOS[Math.random() < .5 ? 'mariposa' : 'pajaro']}</span>`; caja.appendChild(bicho);
+      const escena = { els: [...gs, bicho], tiempos: [] }; actual = escena;
+      const W = innerWidth, w = gs[0].offsetWidth, tb = bicho.offsetWidth, cabezaEn = aDer ? .823 : .177, s = aDer ? 1 : -1;
+      const viva = () => actual === escena;
+      const pausa = ms => new Promise(r => escena.tiempos.push(setTimeout(r, ms)));
+      let xb = aDer ? -tb - 20 : W + 20, yb = gs[0].getBoundingClientRect().top - 30;
+      const xs = gs.map((g, i) => aDer ? -w - 20 - i * w * .78 : W + 20 + i * w * .78);
+      gs.forEach((g, i) => { g.style.transform = `translateX(${xs[i]}px)`; }); bicho.style.transform = `translate(${xb}px, ${yb}px)`;
+      const volar = (x, y, ms) => { const a = bicho.animate([{ transform: `translate(${xb}px, ${yb}px)` }, { transform: `translate(${x}px, ${y}px)` }], { duration: ms, easing: 'ease-in-out', fill: 'forwards' }); xb = x; yb = y; return a.finished; };
+      const andar = (i, x, v = .14) => { const g = gs[i], de = xs[i]; xs[i] = x; g.classList.remove('quieto'); return g.animate([{ transform: `translateX(${de}px)` }, { transform: `translateX(${x}px)` }], { duration: Math.max(250, Math.abs(x - de) / v), easing: 'linear', fill: 'forwards' }).finished.then(() => { if (v < .2) g.classList.add('quieto'); }); };
+      const saltar = (i, h) => gs[i].animate([{ transform: `translate(${xs[i]}px, 0)` }, { transform: `translate(${xs[i]}px, ${-h}px)`, offset: .45 }, { transform: `translate(${xs[i]}px, 0)` }], { duration: 480, easing: 'ease-out', fill: 'forwards' }).finished;
+      (async () => {
+        for (let n = 0; n < botones.length; n++) {
+          const b = botones[n], r = b.getBoundingClientRect();
+          if (!b.isConnected || !r.width || r.bottom < 0 || r.top > innerHeight) continue;
+          const cx = r.left + r.width / 2;
+          // el bicho se posa en el borde de arriba del botón; ellas se plantan con la cabeza encima
+          await Promise.all([volar(cx - tb / 2, r.top < tb ? r.bottom - 6 : r.top - tb * .6, n ? 700 : 1200), ...gs.map((g, i) => andar(i, cx - w * cabezaEn - s * i * w * .78))]);
+          if (!viva()) return;
+          if (!n) { gs.forEach(g => g.classList.add('hipno')); decir(gs[0], 'oooh…', 1100); }
+          await pausa(260); if (!viva()) return;
+          destacar(b);
+          await Promise.all(gs.map((g, i) => pausa(i * 150).then(() => viva() ? saltar(i, 38 + Math.random() * 14) : null)));
+          if (!viva()) return;
+          await pausa(200); if (!viva()) return;
+        }
+        volar(aDer ? W + 60 : -tb - 60, -tb - 40, 1000).then(() => bicho.remove()).catch(() => {});
+        await pausa(500); if (!viva()) return;
+        gs.forEach(g => g.classList.remove('hipno')); decir(gs[0], '¿y el bicho?', 1200);
+        await pausa(1000); if (!viva()) return;
+        gs.forEach(g => { g.classList.remove('quieto'); g.classList.add('corre'); });
+        await Promise.all(gs.map((g, i) => andar(i, aDer ? W + 40 : -w - 40, .3)));
+        if (viva()) quitar();
+      })().catch(() => { if (viva()) quitar(); });
+      return true;
     }
     function aparecer(k, modo) {
       if (actual) quitar();
       // Mientras alguien arma su saludo, las gatas no interceptan los toques
       caja.classList.toggle('pasivo', !$('#asistente').hidden);
-      const azar = !modo && !k && !sinMovimiento ? Math.random() : 1;
-      if (modo === 'jugar' || azar < .3) return jugar();
-      if (modo === 'juguete' || azar < .58) return correrConJuguete(k);
+      const suerte = !modo && !k && !sinMovimiento ? Math.random() : 1;
+      if ((modo === 'hipnosis' || suerte < .2) && hipnosis()) return;
+      if (modo === 'jugar' || (suerte >= .2 && suerte < .4)) return jugar();
+      if (modo === 'juguete' || (suerte >= .4 && suerte < .62)) return correrConJuguete(k);
       k = String(k || '').toLowerCase(); if (!PELAJE[k]) k = Math.random() < .5 ? 'pura' : 'tapioca';
       const boton = modo === 'pasear' ? null : botonCerca();
       if (boton && (modo === 'sentar' || sinMovimiento || Math.random() < .5)) sentar(k, boton);
@@ -1326,7 +1403,7 @@
     }
     return { iniciar: () => programar(true), aparecer };
   })();
-  window.miau = gatos.aparecer;   // travesura: escribe miau('pura'), miau('', 'jugar') o miau('tapioca', 'juguete') en la consola
+  window.miau = gatos.aparecer;   // travesura: escribe miau('pura'), miau('', 'jugar'), miau('tapioca', 'juguete') o miau('', 'hipnosis') en la consola
 
   // ---------- arranque ----------
   function leerEnlace() {

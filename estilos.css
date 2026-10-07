@@ -499,6 +499,23 @@ button.enmarcado:hover { transform: translateY(-2px); }
 .gato.corre .tronco { animation-duration: .24s; }
 .gato .juguete { transform-box: fill-box; transform-origin: 50% 0; animation: balanceo .48s ease-in-out infinite; }
 .gato.quieto .juguete { animation-play-state: paused; }
+.gato .espirales { display: none; }
+.gato.hipno .espirales { display: block; }
+.gato .giro { animation: girar .8s linear infinite; }
+@keyframes girar { to { transform: rotate(360deg); } }
+.bicho { position: absolute; left: 0; top: 0; width: 2.3rem; height: 2.3rem; pointer-events: none; will-change: transform; }
+.bicho span { display: block; width: 100%; height: 100%; }
+.bicho.izq span { transform: scaleX(-1); }
+.bicho svg { display: block; width: 100%; height: 100%; overflow: visible; animation: revolotear .45s ease-in-out infinite alternate; }
+@keyframes revolotear { from { transform: translateY(-3px); } to { transform: translateY(3px); } }
+.bicho .ala { animation: aleteo .15s ease-in-out infinite alternate; }
+@keyframes aleteo { to { transform: scaleX(.25); } }
+.bicho .ala-p { transform-origin: 2px 0; animation: batir .13s ease-in-out infinite alternate; }
+@keyframes batir { to { transform: scaleY(-.75); } }
+.tabs .ico { transition: transform .2s ease; }
+.tabs .guino { color: var(--naranja-2); }
+.tabs .guino .ico { transform: scale(1.22); }
+.nav-ancha a.guino { opacity: 1; border-color: var(--durazno); }
 @keyframes balanceo { 0%, 100% { transform: rotate(-13deg); } 50% { transform: rotate(13deg); } }
 .gatos.pasivo .gato { pointer-events: none; }
 .chispa { position: absolute; bottom: calc(var(--alto-tabs) + 3.4rem + env(safe-area-inset-bottom, 0px)); margin-left: -.7rem; font: 700 1.6rem/1 var(--f-titulo); color: var(--naranja); animation: chispa .45s ease-out both; pointer-events: none; }
