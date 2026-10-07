@@ -15,7 +15,7 @@
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const ico = n => `<svg class="ico" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+  const ico = n => `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-${n}"/></svg>`;
   const pieza = c => `<span class="pieza" aria-hidden="true">${c}︎</span>`;
   const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
   const azar = (n = 16) => [...crypto.getRandomValues(new Uint8Array(n))].map(b => b.toString(16).padStart(2, '0')).join('');
@@ -232,7 +232,7 @@
     if (!enlace) return '';
     const e = incrustar(enlace);
     if (e && !SIN_MARCOS) {
-      return `<div class="incrustado ${e.clase}"><iframe src="${esc(e.src)}" ${e.alto ? `height="${e.alto}"` : ''} loading="lazy" title="Música en ${e.sitio}" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>`;
+      return `<div class="incrustado ${e.clase}${e.clase === 'yt' ? ' enmarcado' : ''}"><iframe src="${esc(e.src)}" ${e.alto ? `height="${e.alto}"` : ''} loading="lazy" title="Música en ${e.sitio}" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>`;
     }
     let sitio = e ? e.sitio : ''; try { sitio = sitio || new URL(enlace).hostname.replace(/^www\./, ''); } catch { /* */ }
     return `<a class="tarjeta-enlace" href="${esc(enlace)}" target="_blank" rel="noopener">${ico(e ? 'musica' : 'enlace')}<span><b>Abrir en ${esc(sitio)}</b></span></a>`;
@@ -242,15 +242,29 @@
   const esFoto = a => (a.tipo || '').startsWith('image/');
   const esVideo = a => (a.tipo || '').startsWith('video/');
   const esAudio = a => (a.tipo || '').startsWith('audio/');
+  const esCancion = a => a.tipo === 'cancion';
   // Un saludo puede traer varias cosas a la vez
-  function contiene(p) { const a = p.adjuntos || []; return { texto: !!p.mensaje, foto: a.some(esFoto), video: a.some(esVideo), audio: a.some(esAudio), musica: !!p.enlace }; }
+  function contiene(p) { const a = p.adjuntos || []; return { texto: !!p.mensaje, foto: a.some(esFoto), video: a.some(esVideo), audio: a.some(esAudio), musica: !!p.enlace || a.some(esCancion) }; }
+  // Canción elegida por nombre: portada, adelanto de 30 segundos y accesos para oírla completa.
+  const urlDe = (u, dominios) => { try { const x = new URL(u); return x.protocol === 'https:' && dominios.some(d => x.hostname === d || x.hostname.endsWith('.' + d)) ? x.href : ''; } catch { return ''; } };
+  const portadaDe = c => SIN_MARCOS ? '' : urlDe(c.portada, ['mzstatic.com']);
+  function htmlCancion(c) {
+    const portada = portadaDe(c), previa = SIN_MARCOS ? '' : urlDe(c.previa, ['itunes.apple.com']);
+    const q = encodeURIComponent(`${c.titulo || ''} ${c.artista || ''}`.trim());
+    return `<div class="cancion">${portada ? `<img src="${esc(portada)}" alt="" loading="lazy" width="96" height="96">` : `<span class="cancion-disco">${ico('musica')}</span>`}
+      <div class="cancion-datos"><b>${esc(c.titulo)}</b><span>${esc(c.artista)}</span>
+        ${previa ? `<audio controls preload="none" src="${esc(previa)}"></audio>` : ''}
+        <div class="cancion-enlaces"><span>Completa en</span><a href="https://www.youtube.com/results?search_query=${q}" target="_blank" rel="noopener">YouTube</a><a href="https://open.spotify.com/search/${q}" target="_blank" rel="noopener">Spotify</a></div>
+      </div></div>`;
+  }
   function htmlAdjuntos(p) {
     const a = p.adjuntos || [];
-    const fotos = a.filter(x => (x.tipo || '').startsWith('image/'));
+    const fotos = a.filter(esFoto);
     let h = '';
-    if (fotos.length) h += `<div class="fotos ${fotos.length === 1 ? 'una' : ''}">${fotos.map(f => `<button type="button" data-accion="ver-foto" data-url="${esc(f.url)}" aria-label="Ver foto en grande"><img src="${esc(f.url)}" alt="Foto de ${esc(p.autor)}" loading="lazy"></button>`).join('')}</div>`;
-    a.filter(x => (x.tipo || '').startsWith('video/')).forEach(v => { h += `<video src="${esc(v.url)}" controls playsinline preload="metadata"></video>`; });
-    a.filter(x => (x.tipo || '').startsWith('audio/')).forEach(v => { h += `<audio src="${esc(v.url)}" controls preload="metadata"></audio>`; });
+    if (fotos.length) h += `<div class="fotos ${fotos.length === 1 ? 'una' : ''}">${fotos.map(f => `<button type="button" class="enmarcado" data-accion="ver-foto" data-url="${esc(f.url)}" aria-label="Ver foto en grande"><img src="${esc(f.url)}" alt="Foto de ${esc(p.autor)}" loading="lazy"></button>`).join('')}</div>`;
+    a.filter(esVideo).forEach(v => { h += `<div class="enmarcado"><video src="${esc(v.url)}" controls playsinline preload="metadata"></video></div>`; });
+    a.filter(esAudio).forEach(v => { h += `<audio src="${esc(v.url)}" controls preload="metadata"></audio>`; });
+    a.filter(esCancion).forEach(c => { h += htmlCancion(c); });
     return h;
   }
   const etiquetaEl = () => `${pieza('♚')} ${esc(C.homenajeado.nombre)}`;
@@ -262,7 +276,7 @@
       <div class="quien">
         <span class="inicial" aria-hidden="true">${esc((p.autor || '?').trim().charAt(0).toUpperCase())}</span>
         <div><b>${p.homenajeado ? etiquetaEl() : esc(p.autor)}</b>
-          <small>${p.relacion ? esc(p.relacion) + ' · ' : ''}Jugada ${n} · ${fecha(p.creado)}${p.oculto ? ' · OCULTO' : ''}</small></div>
+          <small>${p.relacion ? esc(p.relacion) + ' · ' : ''}${fecha(p.creado)}${p.oculto ? ' · OCULTO' : ''}</small></div>
       </div>
       ${p.mensaje ? `<p class="texto-saludo">${esc(p.mensaje)}</p>` : ''}
       ${htmlAdjuntos(p)}${htmlEnlace(p.enlace)}
@@ -284,20 +298,8 @@
     </article>`;
   }
 
-  const EDADES = [
-    { desde: 0, nombre: 'Alta Edad Media' }, { desde: 5, nombre: 'Edad Feudal' },
-    { desde: 15, nombre: 'Edad de los Castillos' }, { desde: 30, nombre: 'Edad Imperial' }
-  ];
   function htmlMarcador(saludos) {
     const c = t => saludos.filter(p => contiene(p)[t]).length;
-    const n = saludos.length;
-    let i = EDADES.length - 1; while (i > 0 && n < EDADES[i].desde) i--;
-    const sig = EDADES[i + 1];
-    const tramos = EDADES.map((e, k) => {
-      const fin = EDADES[k + 1] ? EDADES[k + 1].desde : e.desde;
-      const pct = k < i ? 100 : k > i ? 0 : !EDADES[k + 1] ? 100 : Math.round(((n - e.desde) / (fin - e.desde)) * 100);
-      return `<i><u style="width:${pct}%"></u></i>`;
-    }).join('');
     return `<div class="marcador">
       <div class="recursos" role="list" aria-label="Lo que ha dejado la gente">
         <div role="listitem">${ico('pluma')}<b>${c('texto')}</b><span>Mensajes</span></div>
@@ -305,10 +307,6 @@
         <div role="listitem">${ico('video')}<b>${c('video')}</b><span>Videos</span></div>
         <div role="listitem">${ico('audio')}<b>${c('audio')}</b><span>Audios</span></div>
         <div role="listitem">${ico('musica')}<b>${c('musica')}</b><span>Música</span></div>
-      </div>
-      <div class="edad">
-        <div class="edad-titulo"><b>${EDADES[i].nombre}</b><span>${sig ? `${plural(sig.desde - n, 'saludo', 'saludos')} para la ${sig.nombre}` : 'La aldea llegó a su máximo esplendor'}</span></div>
-        <div class="edad-barra" aria-hidden="true">${tramos}</div>
       </div>
     </div>`;
   }
@@ -318,9 +316,9 @@
     if (b.t === 'saludo') return `<p class="saludo-carta">${esc(b.texto)}</p>`;
     if (b.t === 'p') return `<p>${esc(b.texto)}</p>`;
     if (b.t === 'firma') return `<p class="firma">${esc(b.texto)}</p>`;
-    if (b.t === 'foto') return `<figure><div class="marco ${b.alto ? 'alto' : ''}"><img data-medio="${esc(b.medio)}" alt="${esc(b.alt || '')}" width="${b.ancho || 800}" height="${b.altoPx || 1000}"></div><figcaption>${esc(b.pie || '')}</figcaption></figure>`;
+    if (b.t === 'foto') return `<figure><div class="marco enmarcado ${b.alto ? 'alto' : ''}"><img data-medio="${esc(b.medio)}" alt="${esc(b.alt || '')}" width="${b.ancho || 800}" height="${b.altoPx || 1000}"></div><figcaption>${esc(b.pie || '')}</figcaption></figure>`;
     if (b.t === 'par') return `<div class="par">${b.fotos.map(f => htmlBloqueCarta({ t: 'foto', ...f })).join('')}</div>`;
-    if (b.t === 'video') return `<figure><div class="video-vertical"><video data-medio="${esc(b.medio)}" data-cartel="${esc(b.cartel || '')}" controls playsinline preload="none"></video></div><figcaption>${esc(b.pie || '')}</figcaption></figure>`;
+    if (b.t === 'video') return `<figure><div class="video-vertical enmarcado"><video data-medio="${esc(b.medio)}" data-cartel="${esc(b.cartel || '')}" controls playsinline preload="none"></video></div><figcaption>${esc(b.pie || '')}</figcaption></figure>`;
     if (b.t === 'cancion') {
       const url = `https://www.youtube.com/watch?v=${encodeURIComponent(b.youtube)}`;
       return `<div class="luna">
@@ -374,7 +372,7 @@
           <p class="rotulo">${esc(C.ficha.rotulo)}</p>
           <h2>${esc(C.ficha.titulo)}</h2>
           <div class="ficha-rejilla">
-            <figure class="ficha-foto"><img data-medio="${esc(C.portada.medio)}" alt="${esc(C.portada.alt)}" width="1080" height="1080"><figcaption>${esc(C.portada.pie)}</figcaption></figure>
+            <figure class="ficha-foto"><div class="enmarcado"><img data-medio="${esc(C.portada.medio)}" alt="${esc(C.portada.alt)}" width="1080" height="1080"></div><figcaption>${esc(C.portada.pie)}</figcaption></figure>
             <div class="ficha">${C.ficha.lineas.map(l => `<div>${pieza(l.pieza)}<p><b>${esc(l.titulo)}</b><span>${esc(l.texto)}</span></p></div>`).join('')}</div>
           </div>
         </section>
@@ -415,6 +413,7 @@
         if (p.mensaje) pon({ ...d, k: p.id + '-t', t: 'texto', texto: p.mensaje, w: p.mensaje.length > 110 ? 4 : 2, h: 2 });
         if (a.some(esAudio)) pon({ ...d, k: p.id + '-a', t: 'audio', w: 2, h: 1 });
         if (p.enlace) pon({ ...d, k: p.id + '-m', t: 'musica', texto: (incrustar(p.enlace) || {}).sitio || 'Canción', w: 2, h: 1 });
+        a.filter(esCancion).forEach((c, i) => pon(portadaDe(c) ? { ...d, k: `${p.id}-c${i}`, t: 'cancion', cancion: c, w: 2, h: 2 } : { ...d, k: `${p.id}-c${i}`, t: 'musica', texto: c.titulo || 'Canción', w: 2, h: 1 }));
       } else if (p.seccion === 'foro' && !privados.has(p.tema)) {
         const d = { destino: 'foro', tema: p.tema, autor };
         a.filter(esFoto).forEach((f, i) => pon({ ...d, k: `${p.id}-f${i}`, t: 'foto', url: f.url, w: 2, h: 2 }));
@@ -430,11 +429,12 @@
   }
   function htmlTesela(p, i) {
     const nueva = !piezasVistas.has(p.k); piezasVistas.add(p.k);
-    const base = `class="tesela ${p.t === 'foto' || p.t === 'video' ? '' : colorDe(p.autor || 'x')} w${p.w} h${p.h} ${nueva ? 'nueva' : ''} ${{ texto: 'con-texto', musica: 'con-texto', audio: 'con-texto', respuesta: 'con-texto', gustos: 'chica' }[p.t] || ''}" style="--w:${p.w};--h:${p.h};--i:${Math.min(i, 28)}" data-accion="ir-pieza" data-destino="${p.destino}" ${p.id ? `data-id="${p.id}"` : ''} ${p.tema ? `data-tema="${esc(p.tema)}"` : ''}`;
+    const base = `class="tesela ${['foto', 'video', 'cancion'].includes(p.t) ? 'con-foto' : colorDe(p.autor || 'x')} w${p.w} h${p.h} ${nueva ? 'nueva' : ''} ${{ texto: 'con-texto', musica: 'con-texto', audio: 'con-texto', respuesta: 'con-texto', gustos: 'chica' }[p.t] || ''}" style="--w:${p.w};--h:${p.h};--i:${Math.min(i, 28)}" data-accion="ir-pieza" data-destino="${p.destino}" ${p.id ? `data-id="${p.id}"` : ''} ${p.tema ? `data-tema="${esc(p.tema)}"` : ''}`;
     const quien = esc(p.autor || '');
     if (p.t === 'foto') return `<button type="button" ${base} aria-label="Foto de ${quien}"><img ${p.medio ? `data-medio="${esc(p.medio)}"` : `src="${esc(p.url)}" loading="lazy"`} alt=""><span class="sello">${quien}</span></button>`;
     if (p.t === 'video') return `<button type="button" ${base} aria-label="Video de ${quien}">${p.medio ? `<img data-medio="${esc(p.medio)}" alt="">` : `<video src="${esc(p.url)}#t=0.4" muted playsinline preload="metadata" tabindex="-1"></video>`}<span class="play">${ico('play')}</span><span class="sello">${quien}</span></button>`;
     if (p.t === 'texto') return `<button type="button" ${base}><span class="cita ${p.texto.length < 48 ? 'corta' : ''}">${esc(p.texto.slice(0, 220))}</span><span class="autor">${quien}${p.pie ? ' · ' + esc(p.pie) : ''}</span></button>`;
+    if (p.t === 'cancion') return `<button type="button" ${base} aria-label="Canción de ${quien}"><img src="${esc(portadaDe(p.cancion))}" alt="" loading="lazy"><span class="play">${ico('musica')}</span><span class="sello">${esc(p.cancion.titulo)} · ${quien}</span></button>`;
     if (p.t === 'audio') return `<button type="button" ${base}>${ico('audio')}<span class="autor">Audio de ${quien}</span></button>`;
     if (p.t === 'musica') return `<button type="button" ${base}>${ico('musica')}<span class="autor">${esc(p.texto)} · ${quien}</span></button>`;
     if (p.t === 'respuesta') return `<button type="button" ${base}>${ico('responder')}<span class="autor">${quien} le respondió a ${esc(p.a)}</span></button>`;
@@ -467,7 +467,7 @@
       <header class="cab-vista">
         <p class="rotulo">El tablero</p>
         <h2>${esEl() ? esc(C.textos.elTablero) : `Saludos para ${esc(h.nombre)}`}</h2>
-        <p>${esEl() ? esc(C.textos.elTableroBajada) : 'Cada saludo es una jugada. Con cada una, la aldea avanza de edad.'}</p>
+        <p>${esEl() ? esc(C.textos.elTableroBajada) : 'Todo lo que le han dejado, del más reciente al primero.'}</p>
       </header>
       ${htmlMarcador(todos.filter(p => !p.oculto))}
       <div class="filtros" role="group" aria-label="Filtrar saludos">${FILTROS.map(([k, t]) => `<button type="button" class="chip" data-accion="filtrar" data-filtro="${k}" aria-pressed="${filtro === k}">${t}</button>`).join('')}</div>
@@ -506,7 +506,7 @@
       <div class="hilo">${m.length ? m.map(p => `<div class="globo ${p.mio ? 'mio' : ''} ${p.homenajeado ? 'del-homenajeado' : ''} ${p.oculto ? 'oculta' : ''}">
           <b>${p.homenajeado ? etiquetaEl() : esc(p.autor)}<small>${fecha(p.creado, true)}</small></b>
           ${p.mensaje ? `<p>${esc(p.mensaje)}</p>` : ''}
-          ${(p.adjuntos || []).filter(a => (a.tipo || '').startsWith('image/')).map(a => `<img src="${esc(a.url)}" alt="Foto de ${esc(p.autor)}" loading="lazy" data-accion="ver-foto" data-url="${esc(a.url)}">`).join('')}
+          ${(p.adjuntos || []).filter(esFoto).map(a => `<div class="enmarcado"><img src="${esc(a.url)}" alt="Foto de ${esc(p.autor)}" loading="lazy" data-accion="ver-foto" data-url="${esc(a.url)}"></div>`).join('')}
           ${(p.mio || esAdmin) ? `<button type="button" class="btn-texto peligro" data-accion="${esAdmin ? 'moderar' : 'borrar'}" data-que="borrar" data-id="${p.id}">Borrar</button>` : ''}
         </div>`).join('') : `<div class="vacio">${pieza(t.pieza)}<h3>Nadie ha escrito aquí todavía</h3><p>Rompe el hielo: cuenta algo.</p></div>`}</div>
       <form class="redactar-foro" data-form="foro" novalidate data-tema="${t.id}">
@@ -632,19 +632,53 @@
     { id: 'foto', ico: 'foto', titulo: 'Fotos', texto: 'Recuerdos juntos. Hasta 6 fotos.', falta: 'las fotos', solo: 'Elige al menos una foto.' },
     { id: 'video', ico: 'video', titulo: 'Un video', texto: 'Grabado ahora o elegido de tu galería.', falta: 'el video', solo: 'Elige o graba un video.' },
     { id: 'audio', ico: 'audio', titulo: 'Un audio', texto: 'Tu voz, grabada aquí mismo.', falta: 'el audio', solo: 'Graba o sube un audio.' },
-    { id: 'musica', ico: 'musica', titulo: 'Una canción', texto: 'Un enlace de YouTube o Spotify. También sirve una playlist.', falta: 'la canción', solo: 'Pega un enlace válido de la canción.' }
+    { id: 'musica', ico: 'musica', titulo: 'Una canción', texto: 'Un enlace de YouTube o Spotify. También sirve una playlist.', falta: 'la canción', solo: 'Elige una canción de la lista o pega un enlace.' }
   ];
   const RELACIONES = ['Familia', 'Amistad', 'Colega', 'Estudiante', 'Otro'];
   let A = null;   // estado del asistente
   let grab = null; // grabadora
 
-  const saludoVacio = () => ({ tipos: new Set(), texto: '', fotos: [], video: null, audio: null, enlace: '' });
+  const saludoVacio = () => ({ tipos: new Set(), texto: '', fotos: [], video: null, audio: null, enlace: '', cancion: null, busca: '', resultados: null, buscando: false, verEnlace: false });
   const elegidos = () => TIPOS.filter(t => A.tipos.has(t.id));
   const enLista = l => l.length < 2 ? l.join('') : `${l.slice(0, -1).join(', ')} y ${l[l.length - 1]}`;
   function sincronizar() {
     if (!A) return;
     const t = $('#as-texto'); if (t) A.texto = t.value;
     const e = $('#as-enlace'); if (e) A.enlace = e.value;
+    const b = $('#as-busca'); if (b) A.busca = b.value;
+  }
+
+  // Sugerencias de canciones a partir del nombre (catálogo público de iTunes)
+  let buscaT = null, buscaN = 0;
+  function htmlResultados() {
+    if (A.buscando) return `<p class="tenue">Buscando…</p>`;
+    if (A.resultados === null) return '';
+    if (A.resultados === 'error') return `<p class="tenue">La búsqueda no está disponible ahora. Puedes pegar un enlace.</p>`;
+    if (!A.resultados.length) return `<p class="tenue">No encontramos esa canción. Prueba con otras palabras o pega un enlace.</p>`;
+    return A.resultados.map((c, i) => `<button type="button" class="resultado" data-accion="elegir-cancion" data-i="${i}">
+      ${portadaDe(c) ? `<img src="${esc(portadaDe(c))}" alt="" width="48" height="48" loading="lazy">` : `<span class="cancion-disco">${ico('musica')}</span>`}
+      <span><b>${esc(c.titulo)}</b><span>${esc(c.artista)}</span></span></button>`).join('');
+  }
+  function pintarResultados() { const c = $('#as-resultados'); if (c) c.innerHTML = htmlResultados(); }
+  function buscarCancion(q) {
+    clearTimeout(buscaT); const n = ++buscaN; q = q.trim();
+    if (q.length < 3) { A.resultados = null; A.buscando = false; return pintarResultados(); }
+    if (PREVIA) {   // la vista previa no puede salir a internet: muestra una lista de ejemplo
+      const n2 = norm(q), ej = [['Fly Me to the Moon', 'Angelina Jordan'], ['What a Wonderful World', 'Louis Armstrong'], ['Viva la Vida', 'Coldplay'], ['Las Mañanitas', 'Tradicional']];
+      const hay = ej.filter(([t, a2]) => norm(t + a2).includes(n2));
+      A.buscando = false; A.resultados = (hay.length ? hay : ej).map(([titulo, artista]) => ({ titulo, artista, portada: '', previa: '', url: '' }));
+      return pintarResultados();
+    }
+    A.buscando = true; pintarResultados();
+    buscaT = setTimeout(async () => {
+      const pedir = async pais => { const r = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=song&media=music&limit=6${pais}`); if (!r.ok) throw new Error('busqueda'); return (await r.json()).results || []; };
+      let lista;
+      try { lista = await pedir('&country=bo'); if (!lista.length) lista = await pedir(''); } catch { lista = null; }
+      if (n !== buscaN || !A) return;
+      A.buscando = false;
+      A.resultados = !lista ? 'error' : lista.filter(x => x.trackName && x.artistName).map(x => ({ titulo: String(x.trackName).slice(0, 160), artista: String(x.artistName).slice(0, 160), portada: String(x.artworkUrl100 || '').replace('100x100', '300x300'), previa: x.previewUrl || '', url: x.trackViewUrl || '' }));
+      pintarResultados();
+    }, 450);
   }
 
   function abrirAsistente() {
@@ -682,8 +716,13 @@
            <label class="btn-texto subir-alterno">O sube un audio que ya tengas<input type="file" id="as-audio" accept="audio/*" hidden></label>`;
     } else if (t.id === 'musica') {
       const enl = arreglarEnlace(A.enlace);
-      cuerpo = `<label class="campo"><span>Enlace de la canción o playlist</span><input type="text" id="as-enlace" inputmode="url" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="https://" value="${esc(A.enlace)}"><small>En YouTube o Spotify: Compartir → Copiar enlace. Luego pégalo aquí.</small></label>
+      const porEnlace = `<label class="campo"><span>Enlace de la canción o playlist</span><input type="text" id="as-enlace" inputmode="url" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="https://" value="${esc(A.enlace)}"><small>En YouTube o Spotify: Compartir → Copiar enlace. Luego pégalo aquí.</small></label>
         <div id="as-vista-enlace">${enl ? htmlEnlace(enl) : ''}</div>`;
+      cuerpo = (A.cancion
+        ? `${htmlCancion(A.cancion)}<button type="button" class="btn-texto" data-accion="quitar-cancion">Elegir otra canción</button>`
+        : `<label class="campo"><span>Nombre de la canción o del artista</span><input type="text" id="as-busca" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search" placeholder="Ej.: Fly me to the moon" value="${esc(A.busca)}"><small>Escribe y elige de la lista. No hace falta buscar ningún enlace.</small></label>
+           <div id="as-resultados" class="resultados" aria-live="polite">${htmlResultados()}</div>`)
+        + (A.verEnlace || A.enlace ? porEnlace : (A.cancion ? '' : `<button type="button" class="btn-texto subir-alterno" data-accion="ver-enlace">O pegar un enlace de YouTube o Spotify</button>`));
     }
     if (!varias) return cuerpo;
     return `<section class="parte"><div class="parte-cab"><b>${ico(t.ico)}${t.titulo}</b><button type="button" class="btn-texto" data-accion="quitar-tipo" data-tipo="${t.id}">Quitar</button></div>${cuerpo}</section>`;
@@ -758,7 +797,7 @@
     const con = k => A.tipos.has(k);
     const texto = con('texto') ? A.texto.trim() : '';
     const enlace = con('musica') ? arreglarEnlace(A.enlace) : '';
-    const vacio = { texto: !texto, foto: !A.fotos.length, video: !A.video, audio: !A.audio, musica: !enlace };
+    const vacio = { texto: !texto, foto: !A.fotos.length, video: !A.video, audio: !A.audio, musica: !enlace && !A.cancion };
     const faltan = elegidos().filter(t => vacio[t.id]);
     if (faltan.length) return errorAsistente(A.tipos.size === 1 ? faltan[0].solo : `Te falta ${enLista(faltan.map(t => t.falta))}. Complétalo o quítalo de tu saludo.`);
     A.error = ''; A.subiendo = true; A.prog = 0; pintarAsistente();
@@ -770,6 +809,7 @@
         const r = await api.subir(f, p => { A.prog = (hecho + p * f.size) / total; const u = $('#as-prog'); if (u) u.style.width = Math.round(A.prog * 100) + '%'; const e = $('#as-estado'); if (e) e.textContent = `Subiendo… ${Math.round(A.prog * 100)} %. No cierres esta ventana.`; });
         hecho += f.size; adjuntos.push(r);
       }
+      if (con('musica') && A.cancion) adjuntos.push({ tipo: 'cancion', ...A.cancion });
       const soyEl = rol === 'homenajeado';
       const principal = ['video', 'audio', 'foto', 'musica', 'texto'].find(con);
       const fila = await api.publicar({ seccion: 'saludo', autor: soyEl ? C.homenajeado.nombre : yo.nombre, relacion: soyEl ? '' : yo.relacion, tipo: principal, mensaje: texto, enlace, adjuntos, homenajeado: soyEl });
@@ -903,6 +943,9 @@
       case 'quitar-foto': sincronizar(); A.fotos.splice(+el.dataset.i, 1); pintarAsistente(); break;
       case 'quitar-video': sincronizar(); A.video = null; pintarAsistente(); break;
       case 'quitar-audio': sincronizar(); A.audio = null; pintarAsistente(); break;
+      case 'elegir-cancion': sincronizar(); A.cancion = A.resultados[+el.dataset.i] || null; A.error = ''; pintarAsistente(); break;
+      case 'quitar-cancion': sincronizar(); A.cancion = null; pintarAsistente(); break;
+      case 'ver-enlace': sincronizar(); A.verEnlace = true; pintarAsistente(); break;
       case 'grabar': sincronizar(); alternarGrabacion(); break;
       case 'ver-mosaico': cerrarAsistente(); ir('mosaico'); break;
       case 'otro-saludo': Object.assign(A, saludoVacio(), { paso: 2, error: '' }); pintarAsistente(); break;
@@ -956,6 +999,7 @@
     if (t.dataset && t.dataset.borrador) { borradores[t.dataset.borrador] = t.value; t.style.height = 'auto'; t.style.height = Math.min(220, Math.max(52, t.scrollHeight + 2)) + 'px'; }
     if (!A) return;
     if (t.id === 'as-texto') A.texto = t.value;
+    if (t.id === 'as-busca') { A.busca = t.value; buscarCancion(t.value); }
     if (t.id === 'as-enlace') { A.enlace = t.value; const enl = arreglarEnlace(t.value); clearTimeout(pintarAsistente._t); pintarAsistente._t = setTimeout(() => { const v = $('#as-vista-enlace'); if (v) v.innerHTML = enl ? htmlEnlace(enl) : ''; }, 500); }
   });
   document.addEventListener('change', ev => {
@@ -988,6 +1032,7 @@
   });
   $('#visor').addEventListener('click', () => { $('#visor').hidden = true; $('#visor-img').src = ''; });
   document.addEventListener('keydown', ev => {
+    if (ev.key === 'Enter' && ev.target.id === 'as-busca') { ev.preventDefault(); return; }
     if (ev.key !== 'Escape') return;
     if (!$('#visor').hidden) $('#visor').hidden = true;
     else if (A && !A.subiendo) cerrarAsistente();
@@ -1114,8 +1159,12 @@
 
     const caja = $('#gatos');
     const sinMovimiento = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    let actual = null, reloj = null;
-    function quitar() { if (!actual) return; cancelAnimationFrame(actual.raf); clearTimeout(actual.t); actual.el.remove(); actual = null; }
+    let actual = null, reloj = null;   // la escena en curso
+    function quitar() {
+      if (!actual) return;
+      cancelAnimationFrame(actual.raf); clearTimeout(actual.t); (actual.tiempos || []).forEach(clearTimeout);
+      actual.els.forEach(e => e.remove()); actual = null;
+    }
     function decir(el, txt, ms = 1700) {
       let g = el.querySelector('.globito');
       if (!g) { g = document.createElement('span'); g.className = 'globito'; el.appendChild(g); }
@@ -1132,36 +1181,92 @@
       });
       return c.length ? c[Math.floor(Math.random() * c.length)] : null;
     }
-    function pasear(k) {
+    function crear(k, clase, svg) {
       const el = document.createElement('div');
-      el.className = 'gato pasea' + (Math.random() < .5 ? ' izq' : '');
-      el.style.setProperty('--dur', (12 + innerWidth / 120) + 's');
-      el.innerHTML = paseando(k);
+      el.className = 'gato ' + clase; el.innerHTML = svg;
+      el.addEventListener('click', () => decir(el, `¡Miau! Soy ${PELAJE[k].nombre}`, 2000));
+      caja.appendChild(el); return el;
+    }
+    function pasear(k) {
+      const el = crear(k, 'pasea' + (Math.random() < .5 ? ' izq' : ''), paseando(k));
+      el.style.setProperty('--dur', (11 + innerWidth / 130) + 's');
       el.addEventListener('animationend', ev => { if (ev.animationName.startsWith('pasear')) quitar(); });
-      el.addEventListener('click', () => { el.classList.add('quieto'); decir(el, `¡Miau! Soy ${PELAJE[k].nombre}`, 2000); setTimeout(() => el.classList.remove('quieto'), 2000); });
-      caja.appendChild(el); actual = { el };
+      el.addEventListener('click', () => { el.classList.add('quieto'); setTimeout(() => el.classList.remove('quieto'), 2000); });
+      actual = { els: [el] };
     }
     function sentar(k, boton) {
-      const el = document.createElement('div');
-      el.className = 'gato sentado'; el.innerHTML = sentada(k);
-      caja.appendChild(el); decir(el, 'prrr…', 0);
-      const irse = () => { if (!actual || actual.el !== el) return; el.classList.add('yendose'); setTimeout(quitar, 420); };
+      const el = crear(k, 'sentado', sentada(k));
+      const escena = { els: [el] }; actual = escena;
+      decir(el, 'prrr…', 0);
+      const irse = () => { if (actual !== escena) return; el.classList.add('yendose'); escena.t = setTimeout(() => { if (actual === escena) quitar(); }, 420); };
       const seguir = () => {
+        if (actual !== escena) return;
         const r = boton.isConnected ? boton.getBoundingClientRect() : null;
         if (!r || !r.width || r.top < 110 || r.bottom > innerHeight + 8) return irse();
         el.style.left = (boton.classList.contains('cta-circulo') ? r.left + (r.width - el.offsetWidth) / 2 : Math.max(4, r.right - el.offsetWidth - Math.min(18, r.width * .12))) + 'px';
         el.style.top = (r.top - el.offsetHeight + 7) + 'px';
-        actual.raf = requestAnimationFrame(seguir);
+        escena.raf = requestAnimationFrame(seguir);
       };
-      el.addEventListener('click', () => decir(el, `¡Miau! Soy ${PELAJE[k].nombre}`, 2200));
-      actual = { el, t: setTimeout(irse, 8500) };
+      escena.t = setTimeout(irse, 7500);
       seguir();
+    }
+    // Entran por lados opuestos, chocan, juegan (una salta por encima de la otra) y una sale corriendo con la otra detrás.
+    function jugar() {
+      const [k1, k2] = Math.random() < .5 ? ['pura', 'tapioca'] : ['tapioca', 'pura'];
+      let L = crear(k1, 'suelto', paseando(k1)), R = crear(k2, 'suelto izq', paseando(k2));   // L mira a la derecha; R, a la izquierda
+      const escena = { els: [L, R], tiempos: [] }; actual = escena;
+      const W = innerWidth, w = L.offsetWidth, alto = L.offsetHeight;
+      const cabe = W - 1.85 * w >= .7 * w;            // ¿hay sitio para saltar por encima?
+      const saltaL = Math.random() < .5;
+      let centro = W * (.38 + Math.random() * .24);
+      if (cabe) centro = saltaL ? Math.min(Math.max(W * (.3 + Math.random() * .2), .7 * w), W - 1.85 * w) : Math.max(Math.min(W * (.5 + Math.random() * .2), W - .7 * w), 1.85 * w);
+      let xL = centro - w * .93, xR = centro - w * .07;      // hocico con hocico
+      const viva = () => actual === escena;
+      const mover = (el, de, hasta, ms, curva = 'linear') => el.animate([{ transform: `translateX(${de}px)` }, { transform: `translateX(${hasta}px)` }], { duration: Math.max(200, ms), easing: curva, fill: 'forwards' }).finished;
+      const salto = (el, x, dx, h, ms) => el.animate([{ transform: `translate(${x}px, 0)` }, { transform: `translate(${x + dx}px, ${-h}px)`, offset: .45 }, { transform: `translate(${x}px, 0)` }], { duration: ms, easing: 'ease-out', fill: 'forwards' }).finished;
+      const brinco = (el, de, hasta, h, ms) => el.animate([{ transform: `translate(${de}px, 0)`, easing: 'cubic-bezier(.3, .6, .6, 1)' }, { transform: `translate(${(de + hasta) / 2}px, ${-h}px)`, easing: 'cubic-bezier(.4, 0, .7, .4)' }, { transform: `translate(${hasta}px, 0)` }], { duration: ms, fill: 'forwards' }).finished;
+      const pausa = ms => new Promise(r => escena.tiempos.push(setTimeout(r, ms)));
+      const chispa = x => { const c = document.createElement('span'); c.className = 'chispa'; c.textContent = '✦'; c.style.left = x + 'px'; caja.appendChild(c); escena.els.push(c); escena.tiempos.push(setTimeout(() => c.remove(), 480)); };
+      const choque = () => { chispa(xL + w * .93); return Promise.all([salto(L, xL, -24, 16, 430), salto(R, xR, 24, 16, 430)]); };
+      L.style.transform = `translateX(${-w - 20}px)`; R.style.transform = `translateX(${W + 20}px)`;
+      (async () => {
+        const v = .12;   // píxeles por milisegundo
+        await Promise.all([mover(L, -w - 20, xL, (xL + w + 20) / v), mover(R, W + 20, xR, (W + 20 - xR) / v)]);
+        if (!viva()) return;
+        L.classList.add('quieto'); R.classList.add('quieto');
+        await choque(); if (!viva()) return;
+        decir(L, '¡miau!', 900); await salto(L, xL, 14, 22, 440); if (!viva()) return;
+        decir(R, '¡mrrau!', 900); await salto(R, xR, -14, 22, 440); if (!viva()) return;
+        if (cabe) {
+          await pausa(180); if (!viva()) return;
+          if (saltaL) { const x = xR + w * .86; decir(L, '¡hop!', 800); await brinco(L, xL, x, alto * .95, 720); xL = xR; xR = x; }
+          else { const x = xL - w * .86; decir(R, '¡hop!', 800); await brinco(R, xR, x, alto * .95, 720); xR = xL; xL = x; }
+          if (!viva()) return;
+          L.classList.add('izq'); R.classList.remove('izq'); [L, R] = [R, L];   // se dan la vuelta y quedan otra vez de frente
+          await pausa(260); if (!viva()) return;
+          await choque(); if (!viva()) return;
+        }
+        await salto(L, xL, 16, 28, 430); if (!viva()) return;
+        await salto(R, xR, -12, 32, 460); if (!viva()) return;
+        await pausa(250); if (!viva()) return;
+        const aDer = Math.random() < .5, huye = aDer ? R : L, sigue = aDer ? L : R, meta = aDer ? W + 40 : -w - 40;
+        const xh = aDer ? xR : xL, xs = aDer ? xL : xR;
+        huye.classList.toggle('izq', !aDer); huye.classList.remove('quieto'); huye.classList.add('corre'); decir(huye, '¡a que no me alcanzas!', 1300);
+        const huida = mover(huye, xh, meta, Math.abs(meta - xh) / .3, 'ease-in');
+        await pausa(320); if (!viva()) return;
+        sigue.classList.remove('quieto'); sigue.classList.add('corre');
+        await Promise.all([huida, mover(sigue, xs, meta, Math.abs(meta - xs) / .28, 'ease-in')]);
+        if (viva()) quitar();
+      })().catch(() => { if (viva()) quitar(); });
     }
     function aparecer(k, modo) {
       if (actual) quitar();
+      // Mientras alguien arma su saludo, las gatas no interceptan los toques
+      caja.classList.toggle('pasivo', !$('#asistente').hidden);
+      if (modo === 'jugar' || (!modo && !k && !sinMovimiento && Math.random() < .4)) return jugar();
       k = String(k || '').toLowerCase(); if (!PELAJE[k]) k = Math.random() < .5 ? 'pura' : 'tapioca';
       const boton = modo === 'pasear' ? null : botonCerca();
-      if (boton && (modo === 'sentar' || sinMovimiento || Math.random() < .55)) sentar(k, boton);
+      if (boton && (modo === 'sentar' || sinMovimiento || Math.random() < .5)) sentar(k, boton);
       else if (!sinMovimiento) pasear(k);
     }
     function programar(primera) {
@@ -1170,11 +1275,11 @@
         const libre = !document.hidden && $('#telon').hidden && $('#visor').hidden && !$('#app').hidden && !(A && A.subiendo) && !grab && !actual;
         if (libre) aparecer();
         programar(false);
-      }, primera ? 9000 + Math.random() * 6000 : 40000 + Math.random() * 45000);
+      }, primera ? 4500 + Math.random() * 3000 : 12000 + Math.random() * 12000);
     }
     return { iniciar: () => programar(true), aparecer };
   })();
-  window.miau = gatos.aparecer;   // travesura: escribe miau('pura') o miau('tapioca') en la consola
+  window.miau = gatos.aparecer;   // travesura: escribe miau('pura'), miau('tapioca') o miau('', 'jugar') en la consola
 
   // ---------- arranque ----------
   function leerEnlace() {
