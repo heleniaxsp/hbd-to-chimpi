@@ -405,6 +405,12 @@ button.enmarcado:hover { transform: translateY(-2px); }
 .soltar b { font-size: 1.15rem; }
 .soltar small { color: var(--tenue); }
 .soltar input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.dos { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+.dos .soltar { padding: 1.2rem .5rem; align-content: start; }
+.dos .soltar .ico { width: 2.25rem; height: 2.25rem; }
+.dos .soltar b { font-size: 1.02rem; line-height: 1.2; }
+.dos .soltar small { font-size: .85rem; }
+.nota-video { font-size: .9rem; }
 .miniaturas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
 .miniaturas div { position: relative; }
 .miniaturas img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; }
@@ -487,6 +493,9 @@ button.enmarcado:hover { transform: translateY(-2px); }
 .gato.suelto { bottom: calc(var(--alto-tabs) + .2rem + env(safe-area-inset-bottom, 0px)); left: 0; width: 8.25rem; will-change: transform; }
 .gato.corre .pata { animation-duration: .24s; }
 .gato.corre .tronco { animation-duration: .24s; }
+.gato .juguete { transform-box: fill-box; transform-origin: 50% 0; animation: balanceo .48s ease-in-out infinite; }
+.gato.quieto .juguete { animation-play-state: paused; }
+@keyframes balanceo { 0%, 100% { transform: rotate(-13deg); } 50% { transform: rotate(13deg); } }
 .gatos.pasivo .gato { pointer-events: none; }
 .chispa { position: absolute; bottom: calc(var(--alto-tabs) + 3.4rem + env(safe-area-inset-bottom, 0px)); margin-left: -.7rem; font: 700 1.6rem/1 var(--f-titulo); color: var(--naranja); animation: chispa .45s ease-out both; pointer-events: none; }
 @keyframes chispa { from { transform: scale(.2) rotate(-30deg); opacity: 0; } 40% { opacity: 1; } to { transform: scale(1.7) rotate(40deg); opacity: 0; } }

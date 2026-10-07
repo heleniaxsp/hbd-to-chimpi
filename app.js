@@ -6,6 +6,7 @@
   const CFG = Object.assign({ supabaseUrl: '', supabaseKey: '' }, window.RN_CONFIG || {});
   const PREVIA = window.RN_PREVIA || null;           // versión de vista previa: contenido ya incluido
   const NUBE = !!(CFG.supabaseUrl && CFG.supabaseKey) && !PREVIA;
+  const TACTIL = matchMedia('(pointer: coarse)').matches;   // en celular se ofrece abrir la cámara
   const SIN_MARCOS = !!PREVIA;                        // la vista previa no puede incrustar otros sitios
   const MAX_VIDEO = 50 * 1024 * 1024;
   const MAX_FOTOS = 6;
@@ -701,12 +702,18 @@
     if (t.id === 'texto') {
       cuerpo = `<label class="campo"><span>${varias ? 'Lo que quieres decirle' : 'Tu mensaje'}</span><textarea id="as-texto" maxlength="6000" placeholder="Con calma. Puede ser corto.">${esc(A.texto)}</textarea></label>`;
     } else if (t.id === 'foto') {
-      cuerpo = `<label class="soltar" ${A.fotos.length >= MAX_FOTOS ? 'hidden' : ''}>${ico('foto')}<b>${A.fotos.length ? 'Agregar más fotos' : 'Elegir fotos'}</b><small>De tu galería o tomadas ahora</small><input type="file" id="as-fotos" accept="image/*" multiple></label>
+      cuerpo = `<div class="${TACTIL ? 'dos' : ''}" ${A.fotos.length >= MAX_FOTOS ? 'hidden' : ''}>
+          ${TACTIL ? `<label class="soltar">${ico('foto')}<b>${A.fotos.length ? 'Tomar otra' : 'Tomar una foto'}</b><small>Abre tu cámara</small><input type="file" id="as-foto-camara" accept="image/*" capture="environment"></label>` : ''}
+          <label class="soltar">${ico(TACTIL ? 'mosaico' : 'foto')}<b>${TACTIL ? (A.fotos.length ? 'Más de la galería' : 'Elegir de la galería') : (A.fotos.length ? 'Agregar más fotos' : 'Elegir fotos')}</b><small>Puedes elegir varias</small><input type="file" id="as-fotos" accept="image/*" multiple></label>
+        </div>
         ${A.fotos.length ? `<div class="miniaturas">${A.fotos.map((f, i) => `<div><img src="${urlTemp(f)}" alt="Foto ${i + 1}"><button type="button" data-accion="quitar-foto" data-i="${i}" aria-label="Quitar foto ${i + 1}">${ico('cerrar')}</button></div>`).join('')}</div>` : ''}`;
     } else if (t.id === 'video') {
       cuerpo = A.video
         ? `<div class="asistente-prev"><video src="${urlTemp(A.video)}" controls playsinline></video></div><button type="button" class="btn-texto" data-accion="quitar-video">Elegir otro video (${peso(A.video.size)})</button>`
-        : `<label class="soltar">${ico('video')}<b>Elegir o grabar un video</b><small>Hasta 50 MB (más o menos un minuto)</small><input type="file" id="as-video" accept="video/*"></label>`;
+        : `<div class="${TACTIL ? 'dos' : ''}">
+          ${TACTIL ? `<label class="soltar">${ico('video')}<b>Grabar ahora</b><small>Abre tu cámara</small><input type="file" id="as-video-camara" accept="video/*" capture="user"></label>` : ''}
+          <label class="soltar">${ico(TACTIL ? 'mosaico' : 'video')}<b>${TACTIL ? 'Elegir de la galería' : 'Elegir un video'}</b><small>Uno que ya tengas</small><input type="file" id="as-video" accept="video/*"></label>
+        </div><small class="tenue nota-video">Que sea corto: el máximo es 50 MB (unos 30 segundos si lo grabas ahora).</small>`;
     } else if (t.id === 'audio') {
       cuerpo = A.audio
         ? `<div class="asistente-prev"><audio src="${urlTemp(A.audio)}" controls></audio></div><button type="button" class="btn-texto" data-accion="quitar-audio">Grabar de nuevo</button>`
@@ -1007,13 +1014,13 @@
     if (t.id === 'foro-foto' && t.files[0]) { adjuntoForo[temaAbierto] = t.files[0]; pintar(); return; }
     if (!A) return;
     sincronizar();
-    if (t.id === 'as-fotos') {
+    if (t.id === 'as-fotos' || t.id === 'as-foto-camara') {
       const nuevas = [...t.files].filter(f => f.type.startsWith('image/') || !f.type);
       const sobran = A.fotos.length + nuevas.length > MAX_FOTOS;
       A.fotos = A.fotos.concat(nuevas).slice(0, MAX_FOTOS); A.error = '';
       pintarAsistente();
       if (sobran) errorAsistente(`Caben hasta ${MAX_FOTOS} fotos por saludo. Puedes dejar otro saludo con las demás.`);
-    } else if (t.id === 'as-video' && t.files[0]) {
+    } else if ((t.id === 'as-video' || t.id === 'as-video-camara') && t.files[0]) {
       const f = t.files[0];
       if (f.size > MAX_VIDEO) { pintarAsistente(); return errorAsistente(`Ese video pesa ${peso(f.size)} y el máximo es 50 MB. Prueba con uno más corto, o súbelo a YouTube y pega el enlace en "Una canción".`); }
       A.video = f; A.error = ''; pintarAsistente();
@@ -1127,7 +1134,25 @@
     }
 
     // Caminando de lado, con la cabeza vuelta hacia quien mira.
-    function paseando(k) {
+    // Juguetes chiquitos que cuelgan del hocico cuando salen corriendo con uno.
+    const JUGUETES = {
+      raton: `<path d="M0 0C3 4 -2 7 0 11" fill="none" stroke="#c9601a" stroke-width="1.600" stroke-linecap="round"/>
+        <circle cx="-6" cy="12.500" r="4.200" fill="#f3c19b" stroke="#557089" stroke-width="1.100"/><circle cx="5" cy="11.500" r="4.200" fill="#f3c19b" stroke="#557089" stroke-width="1.100"/>
+        <path d="M-10 18C-10 12 -4 10 2 10C9 10 14 14 15 19C10 24 -6 25 -10 18Z" fill="#9db4c9" stroke="#557089" stroke-width="1.200" stroke-linejoin="round"/>
+        <circle cx="9" cy="17" r="1.200" fill="#173650"/><circle cx="15" cy="19" r="1.300" fill="#c9601a"/>`,
+      ovillo: `<path d="M0 0C-3 4 2 6 0 9" fill="none" stroke="#c9601a" stroke-width="1.600" stroke-linecap="round"/>
+        <circle cx="0" cy="18" r="9.500" fill="#c9601a" stroke="#ad500f" stroke-width="1.200"/>
+        <path d="M-8 14C-3 17 4 17 9 15M-9 20C-3 23 4 23 9 21M-4 10C-7 16 -6 23 -2 27M4 9C8 15 7 22 3 27" fill="none" stroke="#f3c19b" stroke-width="1.300" stroke-linecap="round"/>
+        <path d="M7 25C12 30 8 34 14 37" fill="none" stroke="#c9601a" stroke-width="1.600" stroke-linecap="round"/>`,
+      pez: `<path d="M0 0V8" fill="none" stroke="#557089" stroke-width="1.400" stroke-linecap="round"/>
+        <path d="M-9 16L-17 10V22Z" fill="#c9601a" stroke="#ad500f" stroke-width="1.100" stroke-linejoin="round"/>
+        <path d="M-10 16C-6 9 6 8 13 16C6 24 -6 23 -10 16Z" fill="#f3c19b" stroke="#ad500f" stroke-width="1.200" stroke-linejoin="round"/>
+        <path d="M-2 11C-4 14 -4 18 -2 21" fill="none" stroke="#ad500f" stroke-width="1.100" stroke-linecap="round"/><circle cx="7.500" cy="14.500" r="1.300" fill="#173650"/>`
+    };
+    const juguete = t => `<g class="tronco"><g transform="translate(214 75) scale(1.5)"><g class="juguete">${JUGUETES[t]}</g></g></g>`;
+    const unJuguete = () => { const t = Object.keys(JUGUETES); return t[Math.floor(Math.random() * t.length)]; };
+
+    function paseando(k, conJuguete) {
       const p = PELAJE[k], T = k === 'tapioca';
       const pata = (x, lejos, fase, trasera) => {
         const col = lejos ? p.sombra : p.base;
@@ -1154,7 +1179,7 @@
           ${pelaje}
         </g>
         ${pata(76, false, '', true)}${pata(196, false, 'b', false)}
-        <g class="tronco"><g transform="translate(214 56) scale(.66)">${cabeza(k)}</g></g></svg>`;
+        <g class="tronco"><g transform="translate(214 56) scale(.66)">${cabeza(k)}</g></g>${conJuguete ? juguete(conJuguete) : ''}</svg>`;
     }
 
     const caja = $('#gatos');
@@ -1251,19 +1276,41 @@
         await pausa(250); if (!viva()) return;
         const aDer = Math.random() < .5, huye = aDer ? R : L, sigue = aDer ? L : R, meta = aDer ? W + 40 : -w - 40;
         const xh = aDer ? xR : xL, xs = aDer ? xL : xR;
-        huye.classList.toggle('izq', !aDer); huye.classList.remove('quieto'); huye.classList.add('corre'); decir(huye, '¡a que no me alcanzas!', 1300);
+        const robo = Math.random() < .5;   // a veces la que huye se lleva un juguete
+        huye.classList.toggle('izq', !aDer); huye.classList.remove('quieto'); huye.classList.add('corre');
+        if (robo) huye.querySelector('svg').insertAdjacentHTML('beforeend', juguete(unJuguete())); else decir(huye, '¡a que no me alcanzas!', 1300);
         const huida = mover(huye, xh, meta, Math.abs(meta - xh) / .3, 'ease-in');
         await pausa(320); if (!viva()) return;
-        sigue.classList.remove('quieto'); sigue.classList.add('corre');
+        sigue.classList.remove('quieto'); sigue.classList.add('corre'); if (robo) decir(sigue, '¡oye, eso es mío!', 1300);
         await Promise.all([huida, mover(sigue, xs, meta, Math.abs(meta - xs) / .28, 'ease-in')]);
         if (viva()) quitar();
       })().catch(() => { if (viva()) quitar(); });
+    }
+    // Una cruza corriendo con un juguete en el hocico; a veces la otra sale detrás a reclamarlo.
+    function correrConJuguete(k) {
+      if (!PELAJE[k]) k = Math.random() < .5 ? 'pura' : 'tapioca';
+      const otra = k === 'pura' ? 'tapioca' : 'pura', izq = Math.random() < .5, clase = 'suelto corre' + (izq ? ' izq' : '');
+      const a = crear(k, clase, paseando(k, unJuguete()));
+      const escena = { els: [a], tiempos: [] }; actual = escena;
+      const W = innerWidth, w = a.offsetWidth, de = izq ? W + 20 : -w - 20, hasta = izq ? -w - 60 : W + 60;
+      const ms = Math.min(6500, Math.max(3000, Math.abs(hasta - de) / .26)), vel = Math.abs(hasta - de) / ms;
+      const viva = () => actual === escena;
+      const correr = (el, retraso) => { el.style.transform = `translateX(${de}px)`; return el.animate([{ transform: `translateX(${de}px)` }, { transform: `translateX(${hasta}px)` }], { duration: ms, delay: retraso, easing: 'linear', fill: 'both' }).finished; };
+      const carreras = [correr(a, 0)];
+      if (Math.random() < .6) {
+        const b = crear(otra, clase, paseando(otra)), retraso = w * 1.08 / vel; escena.els.push(b);
+        carreras.push(correr(b, retraso));
+        escena.tiempos.push(setTimeout(() => { if (viva()) decir(b, '¡oye, eso es mío!', 1500); }, retraso + ms * .28));
+      }
+      Promise.all(carreras).then(() => { if (viva()) quitar(); }).catch(() => { if (viva()) quitar(); });
     }
     function aparecer(k, modo) {
       if (actual) quitar();
       // Mientras alguien arma su saludo, las gatas no interceptan los toques
       caja.classList.toggle('pasivo', !$('#asistente').hidden);
-      if (modo === 'jugar' || (!modo && !k && !sinMovimiento && Math.random() < .4)) return jugar();
+      const azar = !modo && !k && !sinMovimiento ? Math.random() : 1;
+      if (modo === 'jugar' || azar < .3) return jugar();
+      if (modo === 'juguete' || azar < .58) return correrConJuguete(k);
       k = String(k || '').toLowerCase(); if (!PELAJE[k]) k = Math.random() < .5 ? 'pura' : 'tapioca';
       const boton = modo === 'pasear' ? null : botonCerca();
       if (boton && (modo === 'sentar' || sinMovimiento || Math.random() < .5)) sentar(k, boton);
@@ -1279,7 +1326,7 @@
     }
     return { iniciar: () => programar(true), aparecer };
   })();
-  window.miau = gatos.aparecer;   // travesura: escribe miau('pura'), miau('tapioca') o miau('', 'jugar') en la consola
+  window.miau = gatos.aparecer;   // travesura: escribe miau('pura'), miau('', 'jugar') o miau('tapioca', 'juguete') en la consola
 
   // ---------- arranque ----------
   function leerEnlace() {
