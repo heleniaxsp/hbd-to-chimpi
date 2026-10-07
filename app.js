@@ -360,7 +360,7 @@
     return `<div class="portada espacio"><div class="columna portada-texto">${portada}</div></div>
       <div class="columna">
         ${esEl() ? '' : `
-        <div class="secreto">${pieza('♞')}<p><b>Es sorpresa.</b> No le reenvíes este enlace a ${nombre}: él recibirá el suyo el ${f}.</p></div>
+        <div class="secreto" role="note"><span class="signo" aria-hidden="true">!</span><p><b>Es sorpresa.</b> No le reenvíes este enlace a ${nombre}: él recibirá el suyo el ${f}.</p></div>
         <section class="seccion">
           <h2>Cómo sumarte</h2>
           <ol class="como">
