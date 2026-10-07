@@ -474,7 +474,7 @@
       <div class="muro">
         ${visibles.length ? visibles.map(p => htmlTarjeta(p, numero.get(p.id))).join('') : `<div class="vacio">${pieza('♙')}
           <h3>${todos.length ? 'Nada de este tipo todavía' : 'El tablero está listo'}</h3>
-          <p>${todos.length ? 'Prueba con otro filtro o sé quien lo estrene.' : esEl() ? esc(C.textos.elVacio) : 'Aún no hay jugadas. La primera puede ser la tuya.'}</p>
+          <p>${todos.length ? 'Prueba con otro filtro o sé quien lo estrene.' : esEl() ? esc(C.textos.elVacio) : 'Aún no hay saludos. El primero puede ser el tuyo.'}</p>
           ${esEl() ? '' : `<button type="button" class="btn btn-haz" data-accion="saludar">${ico('mas')}Dejar mi saludo</button>`}</div>`}
       </div>
     </div>`;
