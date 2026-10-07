@@ -349,7 +349,7 @@
            <a class="cta-circulo" href="#mosaico" data-ir="mosaico">${esc(T.elVer)}</a>
          </div>`
       : `<p class="rotulo">Sorpresa de cumpleaños · ${f}</p>
-         <h1 class="palabra"><span>Misión</span><span class="lado">Cumple lejos. Llevémosle la casa.</span><span class="l2">${nombre}</span></h1>
+         <h1 class="palabra"><span>Misión</span><span class="lado">Cumple lejos. Llevémosle la casa.</span><span class="l2">${esc(h.apodo || h.nombre)}</span></h1>
          <ul class="vinetas"><li>Mensajes</li><li>Videos</li><li>Fotos</li><li>Audios</li><li>Canciones</li></ul>
          <p class="bajada">Déjale una cosa o varias. Toma dos minutos y no necesitas crear ninguna cuenta.</p>
          <div class="portada-pie">
@@ -371,7 +371,7 @@
         </section>`}
         <section class="seccion">
           <p class="rotulo">${esc(C.ficha.rotulo)}</p>
-          <h2>${esc(C.ficha.titulo)}</h2>
+          ${h.apodo ? `<p class="ficha-nombre">${esc(C.ficha.titulo)}</p><h2 class="ficha-apodo">${esc(C.ficha.apodoAntes || 'Mejor conocido como')} <b>${esc(h.apodo)}</b></h2>` : `<h2>${esc(C.ficha.titulo)}</h2>`}
           <div class="ficha-rejilla">
             <figure class="ficha-foto"><div class="enmarcado"><img data-medio="${esc(C.portada.medio)}" alt="${esc(C.portada.alt)}" width="1080" height="1080"></div><figcaption>${esc(C.portada.pie)}</figcaption></figure>
             <div class="ficha">${C.ficha.lineas.map(l => `<div>${pieza(l.pieza)}<p><b>${esc(l.titulo)}</b><span>${esc(l.texto)}</span></p></div>`).join('')}</div>

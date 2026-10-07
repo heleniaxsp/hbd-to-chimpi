@@ -181,6 +181,9 @@ button.enlace-flecha { background: none; border: 0; padding: 0; cursor: pointer;
 .como b { display: block; font-size: 1.15rem; }
 .como span { color: var(--tenue); }
 
+.ficha-nombre { font: 700 1.2rem/1.3 var(--f-titulo); letter-spacing: .07em; text-transform: uppercase; }
+.ficha-apodo { margin-top: -1rem; color: var(--naranja); font-size: clamp(2.1rem, 9.6vw, 3.6rem); font-weight: 600; line-height: 1; letter-spacing: -.02em; }
+.ficha-apodo b { font-weight: 800; }
 .ficha-rejilla { display: grid; gap: 1.5rem; }
 .ficha-foto { margin: 0; }
 .ficha-foto img { width: 100%; height: auto; aspect-ratio: 1 / 1; object-fit: cover; background: var(--marino-2); }
