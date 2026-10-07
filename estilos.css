@@ -201,6 +201,8 @@ button.enlace-flecha { background: none; border: 0; padding: 0; cursor: pointer;
 .carta p.rotulo { font-size: .74rem; line-height: 1.3; }
 .carta .saludo-carta { font: italic 500 2.2rem/1.2 var(--f-carta); }
 .carta .firma { font: italic 500 2.2rem/1.1 var(--f-carta); }
+/* La Bodoni afina demasiado sus trazos finos en tamaños grandes (se pierden en el celular): se fija el corte robusto y un peso mayor. */
+.logo, .carta .saludo-carta, .carta .firma { font-weight: 600; font-optical-sizing: none; font-variation-settings: "opsz" 8; }
 figure { margin: 0; display: grid; gap: .6rem; }
 figcaption { color: var(--tenue); font-size: .95rem; max-width: 34rem; }
 .marco { border-radius: var(--radio); overflow: hidden; background: var(--acero-claro); }
