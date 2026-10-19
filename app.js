@@ -211,6 +211,16 @@
     if (!/^https?:\/\//i.test(s)) s = 'https://' + s;
     try { const u = new URL(s); return /^https?:$/.test(u.protocol) && u.hostname.includes('.') ? u.href : ''; } catch { return ''; }
   }
+  // Encuentra un enlace dentro de lo que se pegó (a veces viene con texto alrededor) y limpia el rastreo de Spotify
+  function enlaceEn(t) {
+    const s = String(t || '').trim();
+    const m = s.match(/https?:\/\/[^\s<>"']+/i) || s.match(/(?:^|\s)((?:open\.spotify\.com|spotify\.link|youtu\.be|(?:www\.|m\.|music\.)?youtube\.com|music\.apple\.com)\/[^\s<>"']*)/i);
+    if (!m) return '';
+    const e = arreglarEnlace((m[1] || m[0]).replace(/[.,;:!?)\]]+$/, ''));
+    if (!e) return '';
+    try { const u = new URL(e); if (u.hostname === 'open.spotify.com') { u.search = ''; u.hash = ''; return u.href; } } catch { /* */ }
+    return e;
+  }
   function incrustar(enlace) {
     let u; try { u = new URL(enlace); } catch { return null; }
     const h = u.hostname.replace(/^(www|m|music)\./, '');
@@ -633,7 +643,7 @@
     { id: 'foto', ico: 'foto', titulo: 'Fotos', texto: 'Recuerdos juntos. Hasta 6 fotos.', falta: 'las fotos', solo: 'Elige al menos una foto.' },
     { id: 'video', ico: 'video', titulo: 'Un video', texto: 'Grabado ahora o elegido de tu galería.', falta: 'el video', solo: 'Elige o graba un video.' },
     { id: 'audio', ico: 'audio', titulo: 'Un audio', texto: 'Tu voz, grabada aquí mismo.', falta: 'el audio', solo: 'Graba o sube un audio.' },
-    { id: 'musica', ico: 'musica', titulo: 'Una canción', texto: 'Un enlace de YouTube o Spotify. También sirve una playlist.', falta: 'la canción', solo: 'Elige una canción de la lista o pega un enlace.' }
+    { id: 'musica', ico: 'musica', titulo: 'Una canción', texto: 'Un enlace de YouTube o Spotify. También sirve una playlist.', falta: 'la canción', solo: 'Escribe el nombre de la canción o pega un enlace.' }
   ];
   const RELACIONES = ['Familia', 'Amistad', 'Colega', 'Estudiante', 'Otro'];
   let A = null;   // estado del asistente
@@ -654,8 +664,8 @@
   function htmlResultados() {
     if (A.buscando) return `<p class="tenue">Buscando…</p>`;
     if (A.resultados === null) return '';
-    if (A.resultados === 'error') return `<p class="tenue">La búsqueda no está disponible ahora. Puedes pegar un enlace.</p>`;
-    if (!A.resultados.length) return `<p class="tenue">No encontramos esa canción. Prueba con otras palabras o pega un enlace.</p>`;
+    if (A.resultados === 'error') return `<p class="tenue">La búsqueda no está disponible ahora. No pasa nada: toca "Enviar" y guardamos el nombre tal como lo escribiste.</p>`;
+    if (!A.resultados.length) return `<p class="tenue">No la encontramos en la lista. No pasa nada: toca "Enviar" y guardamos el nombre tal como lo escribiste.</p>`;
     return A.resultados.map((c, i) => `<button type="button" class="resultado" data-accion="elegir-cancion" data-i="${i}">
       ${portadaDe(c) ? `<img src="${esc(portadaDe(c))}" alt="" width="48" height="48" loading="lazy">` : `<span class="cancion-disco">${ico('musica')}</span>`}
       <span><b>${esc(c.titulo)}</b><span>${esc(c.artista)}</span></span></button>`).join('');
@@ -722,12 +732,12 @@
             <small class="tenue">${grab ? 'Grabando… toca el cuadrado para terminar' : 'Máximo 5 minutos'}</small></div>
            <label class="btn-texto subir-alterno">O sube un audio que ya tengas<input type="file" id="as-audio" accept="audio/*" hidden></label>`;
     } else if (t.id === 'musica') {
-      const enl = arreglarEnlace(A.enlace);
+      const enl = enlaceEn(A.enlace) || arreglarEnlace(A.enlace);
       const porEnlace = `<label class="campo"><span>Enlace de la canción o playlist</span><input type="text" id="as-enlace" inputmode="url" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="https://" value="${esc(A.enlace)}"><small>En YouTube o Spotify: Compartir → Copiar enlace. Luego pégalo aquí.</small></label>
         <div id="as-vista-enlace">${enl ? htmlEnlace(enl) : ''}</div>`;
       cuerpo = (A.cancion
         ? `${htmlCancion(A.cancion)}<button type="button" class="btn-texto" data-accion="quitar-cancion">Elegir otra canción</button>`
-        : `<label class="campo"><span>Nombre de la canción o del artista</span><input type="text" id="as-busca" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search" placeholder="Ej.: Fly me to the moon" value="${esc(A.busca)}"><small>Escribe y elige de la lista. No hace falta buscar ningún enlace.</small></label>
+        : `<label class="campo"><span>Nombre de la canción o del artista</span><input type="text" id="as-busca" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search" placeholder="Ej.: Fly me to the moon" value="${esc(A.busca)}"><small>Escribe el nombre y elige de la lista. Si tienes un enlace de Spotify o YouTube, también puedes pegarlo aquí.</small></label>
            <div id="as-resultados" class="resultados" aria-live="polite">${htmlResultados()}</div>`)
         + (A.verEnlace || A.enlace ? porEnlace : (A.cancion ? '' : `<button type="button" class="btn-texto subir-alterno" data-accion="ver-enlace">O pegar un enlace de YouTube o Spotify</button>`));
     }
@@ -803,8 +813,10 @@
     if (grab) return errorAsistente('Termina la grabación primero: toca el cuadrado.');
     const con = k => A.tipos.has(k);
     const texto = con('texto') ? A.texto.trim() : '';
-    const enlace = con('musica') ? arreglarEnlace(A.enlace) : '';
-    const vacio = { texto: !texto, foto: !A.fotos.length, video: !A.video, audio: !A.audio, musica: !enlace && !A.cancion };
+    const enlace = con('musica') ? (enlaceEn(A.enlace) || arreglarEnlace(A.enlace) || enlaceEn(A.busca)) : '';
+    // Si no eligió de la lista ni pegó enlace, se guarda el nombre tal como lo escribió
+    const nombreLibre = con('musica') && !enlace && !A.cancion ? A.busca.trim().slice(0, 160) : '';
+    const vacio = { texto: !texto, foto: !A.fotos.length, video: !A.video, audio: !A.audio, musica: !enlace && !A.cancion && nombreLibre.length < 2 };
     const faltan = elegidos().filter(t => vacio[t.id]);
     if (faltan.length) return errorAsistente(A.tipos.size === 1 ? faltan[0].solo : `Te falta ${enLista(faltan.map(t => t.falta))}. Complétalo o quítalo de tu saludo.`);
     A.error = ''; A.subiendo = true; A.prog = 0; pintarAsistente();
@@ -817,6 +829,7 @@
         hecho += f.size; adjuntos.push(r);
       }
       if (con('musica') && A.cancion) adjuntos.push({ tipo: 'cancion', ...A.cancion });
+      else if (nombreLibre) adjuntos.push({ tipo: 'cancion', titulo: nombreLibre, artista: '', portada: '', previa: '', url: '' });
       const soyEl = rol === 'homenajeado';
       const principal = ['video', 'audio', 'foto', 'musica', 'texto'].find(con);
       const fila = await api.publicar({ seccion: 'saludo', autor: soyEl ? C.homenajeado.nombre : yo.nombre, relacion: soyEl ? '' : yo.relacion, tipo: principal, mensaje: texto, enlace, adjuntos, homenajeado: soyEl });
@@ -1006,8 +1019,12 @@
     if (t.dataset && t.dataset.borrador) { borradores[t.dataset.borrador] = t.value; t.style.height = 'auto'; t.style.height = Math.min(220, Math.max(52, t.scrollHeight + 2)) + 'px'; }
     if (!A) return;
     if (t.id === 'as-texto') A.texto = t.value;
-    if (t.id === 'as-busca') { A.busca = t.value; buscarCancion(t.value); }
-    if (t.id === 'as-enlace') { A.enlace = t.value; const enl = arreglarEnlace(t.value); clearTimeout(pintarAsistente._t); pintarAsistente._t = setTimeout(() => { const v = $('#as-vista-enlace'); if (v) v.innerHTML = enl ? htmlEnlace(enl) : ''; }, 500); }
+    if (t.id === 'as-busca') {
+      const enl = enlaceEn(t.value);
+      if (enl) { clearTimeout(buscaT); buscaN++; A.enlace = enl; A.busca = ''; A.resultados = null; A.buscando = false; A.verEnlace = true; A.error = ''; pintarAsistente(); tostada('Listo, enlace agregado.'); return; }
+      A.busca = t.value; buscarCancion(t.value);
+    }
+    if (t.id === 'as-enlace') { A.enlace = t.value; const enl = enlaceEn(t.value) || arreglarEnlace(t.value); clearTimeout(pintarAsistente._t); pintarAsistente._t = setTimeout(() => { const v = $('#as-vista-enlace'); if (v) v.innerHTML = enl ? htmlEnlace(enl) : ''; }, 500); }
   });
   document.addEventListener('change', ev => {
     const t = ev.target;
