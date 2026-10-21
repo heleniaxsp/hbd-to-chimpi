@@ -439,15 +439,67 @@ button.enmarcado:hover { transform: translateY(-2px); }
 .listo { text-align: center; justify-items: center; padding-top: 2rem; }
 .listo .pieza { font-size: 4.5rem; line-height: 1; color: var(--naranja); }
 
-/* Telón del homenajeado */
-.telon { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 2rem 1.5rem; }
-.telon-caja { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; justify-items: start; width: min(100%, 34rem); }
-.telon-intro { color: var(--durazno); font-weight: 600; max-width: 22rem; }
-.telon h1 { font-size: clamp(2.4rem, 11.4vw, 5rem); font-weight: 500; line-height: .95; letter-spacing: -.035em; max-width: 100%; }
-.telon p { font-size: 1.15rem; }
+/* Telón del homenajeado: un regalo que se abre */
+html.con-enlace #puerta .puerta-caja { visibility: hidden; }
+html.con-telon, html.con-telon body { overflow: hidden; }
+.telon { position: fixed; inset: 0; z-index: 80; display: flex; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain;
+  padding: calc(1.25rem + env(safe-area-inset-top, 0px)) 1.25rem calc(1.25rem + env(safe-area-inset-bottom, 0px)); }
+.telon-caja { position: relative; z-index: 1; margin: auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: .9rem; justify-items: center; text-align: center; width: min(100%, 34rem); }
+.telon-intro { color: var(--durazno); font-weight: 600; max-width: 24rem; }
+.telon h1 { font-size: clamp(2.3rem, 10.5vw, 4.6rem); font-weight: 500; line-height: .95; letter-spacing: -.035em; max-width: 100%; }
+.telon p { font-size: 1.1rem; }
+#telon-texto { max-width: 30rem; color: #e6eef6; }
 .telon-firma { font: 700 .72rem/1.3 var(--f-titulo); letter-spacing: .14em; text-transform: uppercase; color: var(--acero); }
-.telon.saliendo { animation: irse .7s ease forwards; }
+.telon .telon-volumen { font-size: .9rem; color: var(--acero-claro); margin-top: -.3rem; }
+.telon-boton, .telon-volumen { transition: opacity .25s ease, transform .25s ease; }
+.telon.abriendo .telon-boton, .telon.abriendo .telon-volumen { opacity: 0; transform: translateY(6px); pointer-events: none; }
+.telon-estrellas { position: absolute; inset: 0; pointer-events: none; }
+.telon-estrellas span { position: absolute; left: var(--x); top: var(--y); width: 3px; height: 3px; border-radius: 50%; background: #fff; opacity: .25; animation: rg-titilar 2.8s ease-in-out var(--d) infinite; }
+@keyframes rg-titilar { 50% { opacity: 1; transform: scale(1.7); } }
+
+.regalo { --g: clamp(7.5rem, 36vw, 10.5rem); position: relative; width: var(--g); height: var(--g); margin: .9rem 0 .2rem; padding: 0; border: 0; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; animation: rg-flotar 3.2s ease-in-out infinite; }
+.regalo:focus-visible { outline-offset: 10px; border-radius: 12px; }
+.regalo > span { position: absolute; display: block; pointer-events: none; }
+.regalo-halo { inset: -38%; border-radius: 50%; background: radial-gradient(circle, rgba(243, 193, 155, .45) 0, rgba(201, 96, 26, .18) 36%, transparent 66%); animation: rg-latir 2.4s ease-in-out infinite; }
+.regalo-rayos { left: 50%; top: 52%; width: 320%; height: 320%; margin: -160% 0 0 -160%; opacity: 0; transform: scale(.15); transition: transform .8s cubic-bezier(.2, .8, .2, 1), opacity .45s ease; }
+.regalo-rayos::before { content: ""; position: absolute; inset: 0; border-radius: 50%; will-change: transform;
+  background: repeating-conic-gradient(rgba(255, 228, 196, .55) 0 7deg, transparent 7deg 22deg);
+  -webkit-mask: radial-gradient(circle, #000 0, #000 16%, transparent 60%); mask: radial-gradient(circle, #000 0, #000 16%, transparent 60%); }
+.regalo-sombra { left: 14%; right: 14%; bottom: -5%; height: 9%; border-radius: 50%; background: radial-gradient(closest-side, rgba(5, 15, 28, .45), transparent); }
+.regalo-caja { left: 10%; right: 10%; bottom: 3%; height: 52%; border-radius: 6px;
+  background: linear-gradient(90deg, transparent 43%, var(--hueso) 43% 57%, transparent 57%), linear-gradient(180deg, #db732c, var(--naranja) 55%, var(--naranja-2));
+  box-shadow: inset 0 10px 0 rgba(0, 0, 0, .14); transform-origin: 50% 100%; }
+.regalo-tapa { left: 4%; right: 4%; top: 31%; height: 17%; border-radius: 6px; transform-origin: 25% 100%;
+  background: linear-gradient(90deg, transparent 43%, var(--hueso) 43% 57%, transparent 57%), linear-gradient(180deg, #e8843f, var(--naranja));
+  transition: transform .8s cubic-bezier(.22, .9, .3, 1), opacity .5s ease .25s; }
+.regalo-lazo { position: absolute; left: 50%; bottom: 62%; width: 64%; margin-left: -32%; }
+.regalo-lazo svg { display: block; width: 100%; height: auto; overflow: visible; }
+.telon.abriendo .regalo { animation: rg-sacudir .42s ease-in-out; }
+.telon.abierto .regalo { animation: none; }
+.telon.abierto .regalo-tapa { transform: translate(-22%, -260%) rotate(-34deg); opacity: 0; }
+.telon.abierto .regalo-rayos { opacity: 1; transform: scale(1); }
+.telon.abierto .regalo-rayos::before { animation: rg-girar 9s linear infinite; }
+.telon.abierto .regalo-caja { animation: rg-rebote .5s ease; }
+.telon.abierto .regalo-halo { animation: none; opacity: 1; transform: scale(1.25); transition: transform .5s ease; }
+.telon-destello { will-change: transform, opacity; position: absolute; z-index: 2; left: 50%; top: 55%; width: 48px; height: 48px; margin: -24px 0 0 -24px; border-radius: 50%; background: var(--hueso); opacity: 0; transform: scale(0); pointer-events: none; }
+.telon.saliendo .telon-destello { animation: rg-destello .75s ease-out forwards; }
+.telon.saliendo { animation: irse .5s ease .3s forwards; }
+@keyframes rg-flotar { 50% { transform: translateY(-8px); } }
+@keyframes rg-latir { 50% { opacity: .6; transform: scale(.92); } }
+@keyframes rg-sacudir { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(-8deg) scale(1.05); } 40% { transform: rotate(7deg) scale(1.08); } 60% { transform: rotate(-5deg) scale(1.07); } 80% { transform: rotate(3deg) scale(1.04); } }
+@keyframes rg-rebote { 30% { transform: scale(1.08, .9); } 65% { transform: scale(.97, 1.04); } }
+@keyframes rg-girar { to { transform: rotate(360deg); } }
+@keyframes rg-destello { 0% { opacity: 0; transform: scale(0); } 35% { opacity: .95; } 100% { opacity: 1; transform: scale(60); } }
 @keyframes irse { to { opacity: 0; visibility: hidden; } }
+html.con-telon .musica-control { display: none; }
+@media (max-height: 700px) {
+  .telon-caja { gap: .6rem; }
+  .telon h1 { font-size: clamp(2rem, 9vw, 3.4rem); }
+  .telon p { font-size: 1rem; }
+  .regalo { --g: clamp(6.5rem, 30vw, 8rem); margin-top: .6rem; }
+}
+.confeti { position: fixed; inset: 0; z-index: 85; width: 100%; height: 100%; pointer-events: none; }
+.musica-control { position: fixed; z-index: 86; right: 1rem; top: calc(4.25rem + .75rem + env(safe-area-inset-top, 0px)); display: inline-flex; align-items: center; min-height: 2.75rem; padding: .45rem 1rem; border: 0; border-radius: 999px; background: var(--marino); color: #fff; font: 700 .9rem/1 var(--f-titulo); letter-spacing: .02em; box-shadow: 0 6px 18px rgba(23, 54, 80, .3); cursor: pointer; }
 .salir-vista { position: fixed; top: calc(4.25rem + env(safe-area-inset-top, 0px)); right: 1rem; z-index: 40; }
 
 /* Visor de fotos y avisos */

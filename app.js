@@ -902,6 +902,7 @@
       case 'refrescar': pintar(); break;
       case 'ver-foto': $('#visor-img').src = el.dataset.url; $('#visor').hidden = false; break;
       case 'tocar-cancion':
+        musica.parar();
         $('#cancion-caja').innerHTML = `<div class="reproductor"><iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(el.dataset.yt)}?autoplay=1&rel=0" title="Canción en YouTube" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>`;
         break;
       case 'megusta': {
@@ -1063,20 +1064,164 @@
   });
   window.addEventListener('hashchange', () => { const v = location.hash.slice(1); if (C && v !== vista && !v.includes('=')) ir(v); });
 
-  // ---------- telón del homenajeado ----------
+  // ---------- telón del homenajeado: un regalo que se abre ----------
+  const MOVIMIENTO = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Caja de música con "Cumpleaños feliz" (melodía tradicional). Se sintetiza aquí: no descarga nada.
+  const musica = (() => {
+    let ctx = null, salida = null, pista = null, reloj = null;
+    const B = 0.5;  // segundos por pulso
+    const hz = m => 440 * Math.pow(2, (m - 69) / 12);
+    const MELODIA = [[0, 67, .75], [.75, 67, .25], [1, 69, 1], [2, 67, 1], [3, 72, 1], [4, 71, 2], [6, 67, .75], [6.75, 67, .25], [7, 69, 1], [8, 67, 1], [9, 74, 1], [10, 72, 2],
+      [12, 67, .75], [12.75, 67, .25], [13, 79, 1], [14, 76, 1], [15, 72, 1], [16, 71, 1], [17, 69, 2], [19, 77, .75], [19.75, 77, .25], [20, 76, 1], [21, 72, 1], [22, 74, 1], [23, 72, 3]];
+    const Do = [48, [55, 60, 64]], Sol = [43, [55, 59, 62]], Fa = [41, [57, 60, 65]];
+    const VALS = [[1, Do, Do, Do], [4, Sol, Sol, Sol], [7, Sol, Sol, Sol], [10, Do, Do, Do], [13, Do, Do, Do], [16, Fa, Fa, Fa], [20, Do, Do, Sol]];
+    function armar() {
+      const comp = ctx.createDynamicsCompressor();
+      salida = ctx.createGain(); salida.gain.value = .7;
+      const eco = ctx.createDelay(1), vuelta = ctx.createGain(), filtro = ctx.createBiquadFilter();
+      eco.delayTime.value = .19; vuelta.gain.value = .22; filtro.type = 'lowpass'; filtro.frequency.value = 2600;
+      salida.connect(comp); salida.connect(eco); eco.connect(filtro); filtro.connect(vuelta); vuelta.connect(eco); filtro.connect(comp);
+      comp.connect(ctx.destination);
+    }
+    function campana(destino, t, m, pulsos, vol, brillo = 1) {
+      const g = ctx.createGain(), largo = Math.max(.7, pulsos * B * 1.9), f = hz(m);
+      g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .008); g.gain.exponentialRampToValueAtTime(.0001, t + largo);
+      g.connect(destino);
+      const capas = brillo ? [[1, 1, 'sine'], [2, .3 * brillo, 'sine'], [3.01, .1 * brillo, 'triangle']] : [[1, 1, 'sine']];
+      capas.forEach(([k, a, tipo]) => {
+        const o = ctx.createOscillator(), ga = ctx.createGain();
+        o.type = tipo; o.frequency.value = f * k; ga.gain.value = a;
+        o.connect(ga); ga.connect(g); o.start(t); o.stop(t + largo + .05);
+      });
+    }
+    function ui(sonando) { const b = $('#musica-control'); if (b) b.hidden = !sonando; }
+    function encender() {   // debe llamarse dentro del toque: así lo exigen los celulares
+      try {
+        if (navigator.audioSession) navigator.audioSession.type = 'playback';
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return false;
+        if (!ctx) { ctx = new AC(); armar(); }
+        if (ctx.state !== 'running') ctx.resume();
+        return true;
+      } catch { return false; }
+    }
+    function parar() {
+      clearTimeout(reloj); ui(false);
+      if (!pista || !ctx) { pista = null; return; }
+      const p = pista, t = ctx.currentTime; pista = null;
+      try { p.gain.cancelScheduledValues(t); p.gain.setValueAtTime(p.gain.value, t); p.gain.linearRampToValueAtTime(0, t + .3); } catch { /* */ }
+      setTimeout(() => { try { p.disconnect(); } catch { /* */ } }, 450);
+    }
+    function abrir() {
+      if (!encender()) return;
+      parar();
+      pista = ctx.createGain(); pista.connect(salida);
+      const ahora = ctx.currentTime + .03;
+      [72, 76, 79, 84, 88, 91, 96].forEach((m, i) => campana(pista, ahora + i * .05, m, .4, .09));   // destello al abrir
+      const t0 = ahora + 1.15;
+      MELODIA.forEach(([b, m, d]) => campana(pista, t0 + b * B, m, d, .2));
+      VALS.forEach(([b, uno, dos, tres]) => {
+        campana(pista, t0 + b * B, uno[0], 1, .11, 0);
+        dos[1].forEach(m => campana(pista, t0 + (b + 1) * B, m, .8, .028, 0));
+        tres[1].forEach(m => campana(pista, t0 + (b + 2) * B, m, .8, .028, 0));
+      });
+      campana(pista, t0 + 23 * B, 36, 3, .1, 0);
+      [60, 64, 67, 72, 76, 79, 84].forEach((m, i) => campana(pista, t0 + 23 * B + i * .07, m, 3, .05));   // final
+      const fin = t0 + 27 * B;
+      ui(true);
+      reloj = setTimeout(() => { pista = null; ui(false); }, (fin - ctx.currentTime) * 1000);
+    }
+    return { abrir, parar };
+  })();
+  $('#musica-control').addEventListener('click', () => musica.parar());
+  document.addEventListener('play', () => musica.parar(), true);   // si pone un video o un audio, la cajita se calla
+  document.addEventListener('visibilitychange', () => { if (document.hidden) musica.parar(); });
+
+  // Confeti en un lienzo: liviano, y se apaga solo cuando termina
+  const confeti = (() => {
+    const COLORES = ['#c9601a', '#f3c19b', '#faf8f4', '#9db4c9', '#ffcf6b', '#e8843f'];
+    const cv = $('#confeti'), cx = cv.getContext('2d');
+    let piezas = [], vivo = false, ultimo = 0, w = 0, h = 0, dpr = 1, reloj = 0;
+    function medir() { dpr = Math.min(window.devicePixelRatio || 1, 2); w = innerWidth; h = innerHeight; cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+    function nueva(x, y, vx, vy) { return { x, y, vx, vy, r: Math.random() * 6.28, vr: (Math.random() - .5) * 10, s: 5 + Math.random() * 6, c: COLORES[Math.random() * COLORES.length | 0], f: Math.random() < .15 ? 2 : Math.random() < .55 ? 1 : 0, ph: Math.random() * 6.28, espera: 0 }; }
+    function arrancar() { if (vivo) return; vivo = true; medir(); cv.hidden = false; ultimo = performance.now(); requestAnimationFrame(cuadro); }
+    function estallar(x, y, n) {
+      if (!vivo) medir();
+      for (let i = 0; i < n; i++) { const a = -Math.PI / 2 + (Math.random() - .5) * 2.1, v = 380 + Math.random() * 640; piezas.push(nueva(x, y, Math.cos(a) * v, Math.sin(a) * v)); }
+      arrancar();
+    }
+    function llover(n, durante) {
+      if (!vivo) medir();
+      for (let i = 0; i < n; i++) { const p = nueva(Math.random() * w, -16, (Math.random() - .5) * 50, 40 + Math.random() * 90); p.espera = Math.random() * durante; piezas.push(p); }
+      arrancar();
+    }
+    function estrella(s) {
+      cx.beginPath();
+      for (let i = 0; i < 10; i++) { const a = i * Math.PI / 5 - Math.PI / 2, r = i % 2 ? s * .45 : s; cx.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+      cx.closePath(); cx.fill();
+    }
+    function cuadro(ahora) {
+      const dt = Math.min(.034, (ahora - ultimo) / 1000); ultimo = ahora; reloj += dt;
+      cx.setTransform(1, 0, 0, 1, 0, 0); cx.clearRect(0, 0, cv.width, cv.height);
+      const siguen = [];
+      for (const p of piezas) {
+        if (p.espera > 0) { p.espera -= dt; siguen.push(p); continue; }
+        p.vx *= 1 - 1.6 * dt; p.vy = Math.min(p.vy + 820 * dt, 230);
+        p.x += (p.vx + Math.sin(p.ph + reloj * 3) * 28) * dt; p.y += p.vy * dt; p.r += p.vr * dt;
+        if (p.y > h + 24) continue;
+        siguen.push(p);
+        const c = Math.cos(p.r), sn = Math.sin(p.r), giro = Math.cos(p.ph + reloj * 6);
+        cx.setTransform(dpr * c, dpr * sn, -dpr * sn * giro, dpr * c * giro, dpr * p.x, dpr * p.y);
+        cx.fillStyle = p.c;
+        if (p.f === 2) estrella(p.s * .8);
+        else if (p.f === 1) cx.fillRect(-p.s / 2, -p.s * .3, p.s, p.s * .6);
+        else { cx.beginPath(); cx.arc(0, 0, p.s * .38, 0, 6.28); cx.fill(); }
+      }
+      piezas = siguen;
+      if (piezas.length) requestAnimationFrame(cuadro);
+      else { vivo = false; cx.setTransform(1, 0, 0, 1, 0, 0); cx.clearRect(0, 0, cv.width, cv.height); cv.hidden = true; }
+    }
+    window.addEventListener('resize', () => { if (vivo) medir(); });
+    return { estallar, llover };
+  })();
+
   function mostrarTelon() {
-    const T = C.textos, h = C.homenajeado, n = posts.filter(p => p.seccion === 'saludo' && !p.oculto).length;
+    const T = C.textos, h = C.homenajeado, t = $('#telon');
     $('#telon-rotulo').textContent = fechaDia(h.fecha);
     $('#telon-intro').textContent = T.telonIntro;
     $('#telon-firma').textContent = T.telonFirma;
     $('#telon-titulo').textContent = `${T.elTitulo} ${h.nombre}`;
-    $('#telon-texto').textContent = n ? T.telon.replace('{saludos}', plural(n, 'saludo', 'saludos')) : T.telonVacio;
-    const t = $('#telon'); t.classList.remove('saliendo'); t.hidden = false;
+    $('#telon-texto').textContent = String(T.telon || T.telonVacio || '').replace(/\s*Hay \{saludos\}[^.]*\./, '');
+    t.classList.remove('abriendo', 'abierto', 'saliendo'); t.hidden = false; t.scrollTop = 0;
+    document.documentElement.classList.add('con-telon');
   }
-  $('#telon-abrir').addEventListener('click', () => {
-    const t = $('#telon'); t.classList.add('saliendo'); setTimeout(() => { t.hidden = true; }, 750);
+  let abriendo = false;
+  function abrirRegalo() {
+    if (abriendo) return;
+    abriendo = true;
+    musica.abrir();   // dentro del toque
     try { sessionStorage.setItem('rn_telon', '1'); } catch { /* */ }
-  });
+    const t = $('#telon'), r = $('#telon-regalo').getBoundingClientRect(), d = $('#telon-destello');
+    const cx = r.left + r.width / 2, cy = r.top + r.height * .45;
+    d.style.left = cx + 'px'; d.style.top = (cy + t.scrollTop) + 'px';
+    t.classList.add('abriendo');
+    const k = MOVIMIENTO ? 1 : .3;
+    setTimeout(() => {
+      t.classList.add('abierto');
+      if (MOVIMIENTO) confeti.estallar(cx, cy, innerWidth < 560 ? 120 : 170);
+    }, 420 * k);
+    setTimeout(() => {
+      t.classList.add('saliendo');
+      if (MOVIMIENTO) confeti.llover(innerWidth < 560 ? 70 : 110, 1.6);
+      setTimeout(() => {
+        t.hidden = true; t.classList.remove('abriendo', 'abierto', 'saliendo');
+        document.documentElement.classList.remove('con-telon'); abriendo = false;
+      }, 820);
+    }, 1400 * k);
+  }
+  $('#telon-abrir').addEventListener('click', abrirRegalo);
+  $('#telon-regalo').addEventListener('click', abrirRegalo);
   function pintarSalirVista() {
     let b = $('#salir-vista');
     if (!vistaPreviaEl) { if (b) b.remove(); return; }
@@ -1458,10 +1603,10 @@
       const hh = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(claveAdmin)))].map(b => b.toString(16).padStart(2, '0')).join('');
       if (hh !== C.adminHash) claveAdmin = '';
     }
-    pintar();
-    await cargar(true);
     let yaVisto = false; try { yaVisto = sessionStorage.getItem('rn_telon') === '1'; } catch { /* */ }
     if (rol === 'homenajeado' && !yaVisto) mostrarTelon();
+    pintar();
+    await cargar(true);
     if (esAdmin && desdeEnlace && desdeEnlace.admin) ir('panel');
     gatos.iniciar();
     setInterval(() => { if (!document.hidden) cargar(); }, 25000);
@@ -1491,6 +1636,7 @@
       try { await entrar(L.clave || '', L); return; }
       catch { if (L.clave) { $('#puerta-error').textContent = 'El enlace no trae la palabra clave correcta. Escríbela aquí.'; $('#puerta-error').hidden = false; } }
     }
+    document.documentElement.classList.remove('con-enlace');
     $('#puerta').hidden = false;
   })();
 })();
