@@ -439,6 +439,77 @@ button.enmarcado:hover { transform: translateY(-2px); }
 .listo { text-align: center; justify-items: center; padding-top: 2rem; }
 .listo .pieza { font-size: 4.5rem; line-height: 1; color: var(--naranja); }
 
+/* Botones que invitan a tocarlos */
+.cta-circulo::after { content: ""; position: absolute; inset: -7px; border-radius: 50%; border: 2px solid var(--naranja); pointer-events: none; animation: pa-onda 2.4s ease-out infinite; }
+.cta-circulo { position: relative; }
+.portada-pie .cta-circulo { animation: pa-respira 3.2s ease-in-out infinite; }
+.enlace-flecha i { animation: pa-empuja 1.8s ease-in-out infinite; }
+.invita { position: relative; overflow: hidden; isolation: isolate; }
+.invita::after { content: ""; position: absolute; z-index: -1; top: 0; bottom: 0; left: -60%; width: 40%; background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .38), transparent); transform: skewX(-18deg); animation: pa-brilla 3.4s ease-in-out infinite; pointer-events: none; }
+.invita i { font-style: normal; display: inline-block; animation: pa-empuja 1.8s ease-in-out infinite; }
+.luna .btn-haz { animation: pa-respira 3.2s ease-in-out infinite; }
+.bajar { display: inline-flex; align-items: center; gap: .55rem; margin-top: .25rem; padding: .6rem 1rem; min-height: 2.75rem; border: 1.5px solid rgba(255, 255, 255, .55); border-radius: 999px; background: rgba(255, 255, 255, .08); color: #fff; cursor: pointer; font: 700 .85rem/1.1 var(--f-titulo); letter-spacing: .06em; text-transform: uppercase; justify-self: start; }
+.bajar i { font-style: normal; display: inline-block; animation: pa-baja 1.4s ease-in-out infinite; }
+.bajar:hover { background: rgba(255, 255, 255, .16); }
+@keyframes pa-onda { 0% { transform: scale(.94); opacity: .85; } 100% { transform: scale(1.32); opacity: 0; } }
+@keyframes pa-respira { 50% { transform: scale(1.045); } }
+@keyframes pa-empuja { 0%, 60%, 100% { transform: translateX(0); } 30% { transform: translateX(5px); } }
+@keyframes pa-baja { 50% { transform: translateY(4px); } }
+@keyframes pa-brilla { 0%, 55% { left: -60%; } 100% { left: 130%; } }
+
+/* El pastel */
+.pastel-zona { display: grid; gap: .8rem; justify-items: center; text-align: center; margin-top: 2.5rem; padding: 2rem 1.25rem 1.75rem; border-radius: 14px; background: radial-gradient(120% 90% at 50% 0%, #fff6ee 0, var(--nube) 60%); border: 1px solid var(--linea); scroll-margin-top: 5rem; }
+.pastel-zona .rotulo { color: var(--naranja-2); }
+.pastel-zona h2 { color: var(--marino); }
+.pastel-ayuda { max-width: 26rem; }
+.pastel-escena { position: relative; width: min(100%, 26rem); display: grid; grid-template-columns: 1fr 3fr 1fr; align-items: end; margin-top: .5rem; }
+.pastel-boton { position: relative; padding: 0; border: 0; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+[data-soplar] { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.pastel-svg { display: block; width: 100%; height: auto; overflow: visible; }
+.pastel-boton:active .pastel-svg { transform: scale(.985); }
+.vela .llama { transform-box: fill-box; transform-origin: 50% 88%; animation: pa-titila .7s ease-in-out infinite alternate; transition: transform .28s ease, opacity .28s ease; }
+.soplando .vela .llama { animation: pa-viento .16s ease-in-out infinite alternate; }
+.vela.apagada .llama { animation: none; transform: scale(.1, 0); opacity: 0; }
+.vela .humo { fill: #b9c4cf; opacity: 0; }
+.vela.apagada .humo circle { animation: pa-humo 1.6s ease-out forwards; }
+.vela.apagada .humo circle:nth-child(2) { animation-delay: .12s; }
+.vela.apagada .humo circle:nth-child(3) { animation-delay: .24s; }
+.vela.apagada .humo { opacity: 1; }
+@keyframes pa-titila { 0% { transform: scale(1, 1) rotate(-3deg); } 100% { transform: scale(.9, 1.1) rotate(3deg); } }
+@keyframes pa-viento { 0% { transform: skewX(-22deg) scale(.95, .8); } 100% { transform: skewX(-34deg) scale(.85, .7); } }
+@keyframes pa-humo { 0% { opacity: .7; transform: translateY(0) scale(.6); } 100% { opacity: 0; transform: translateY(-26px) scale(1.4); } }
+.vela .humo circle { transform-box: fill-box; transform-origin: center; opacity: 0; }
+
+.pa-gata { position: relative; display: grid; justify-items: center; padding-bottom: .3rem; }
+.pa-cara { width: 100%; max-width: 5.2rem; height: auto; overflow: visible; transition: transform .2s ease; }
+.pa-gata.izq .pa-cara { transform: rotate(8deg); }
+.pa-gata.der .pa-cara { transform: rotate(-8deg); }
+.pa-cachetes { fill: #f3a99b; opacity: 0; transition: opacity .15s ease; }
+.soplando .pa-cachetes { opacity: .8; }
+.soplando .pa-gata .pa-cara { animation: pa-sopla .32s ease-in-out infinite alternate; }
+@keyframes pa-sopla { from { transform: scale(1); } to { transform: scale(1.09, .96); } }
+.pa-viento { position: absolute; top: 18%; width: 70%; height: auto; fill: none; stroke: #2d5b85; stroke-width: 3.5; stroke-linecap: round; stroke-dasharray: 14 40; opacity: 0; transition: opacity .2s ease; }
+.pa-gata.izq .pa-viento { left: 78%; }
+.pa-gata.der .pa-viento { right: 78%; transform: scaleX(-1); }
+.soplando .pa-viento { opacity: .75; animation: pa-sopla-viento .5s linear infinite; }
+@keyframes pa-sopla-viento { to { stroke-dashoffset: -54; } }
+.pa-dice, .pa-bravo { position: absolute; bottom: 100%; white-space: nowrap; padding: .3rem .6rem; border-radius: 10px; background: var(--marino); color: #fff; font: 700 .78rem/1.1 var(--f-titulo); pointer-events: none; }
+.pa-dice { animation: pa-globo 5s ease-in-out infinite; }
+.pa-gata.der .pa-dice { animation-delay: 2.5s; }
+.pa-bravo { display: none; background: var(--naranja); }
+.soplando .pa-dice, .fiesta .pa-dice { display: none; }
+.fiesta .pa-bravo { display: block; animation: pa-aparece .4s ease both; }
+.fiesta .pa-gata .pa-cara { animation: pa-salta .9s ease-in-out infinite; }
+.fiesta .pa-gata.der .pa-cara { animation-delay: .2s; }
+@keyframes pa-globo { 0%, 8% { opacity: 0; transform: translateY(6px); } 14%, 46% { opacity: 1; transform: none; } 54%, 100% { opacity: 0; transform: translateY(-4px); } }
+@keyframes pa-aparece { from { opacity: 0; transform: translateY(8px) scale(.8); } }
+@keyframes pa-salta { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-14px) rotate(-4deg); } 60% { transform: translateY(-14px) rotate(4deg); } }
+.pastel-acciones { display: grid; gap: .55rem; justify-items: center; width: min(100%, 22rem); margin-top: .5rem; }
+.pastel-acciones .btn-grande { width: 100%; }
+.pastel-acciones small { font-size: .88rem; }
+.escuchando #pastel-mic { color: var(--naranja-2); }
+.pastel-zona.recien h2 { animation: pa-aparece .5s ease both; }
+
 /* Telón del homenajeado: un regalo que se abre */
 html.con-enlace #puerta .puerta-caja { visibility: hidden; }
 html.con-telon, html.con-telon body { overflow: hidden; }

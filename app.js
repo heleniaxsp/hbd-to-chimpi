@@ -354,6 +354,7 @@
       ? `<p class="rotulo">${f} · ${esc(T.elRotulo)}</p>
          <h1 class="palabra"><span>Feliz</span><span class="lado">${esc(T.elLado)}</span><span class="l2">cumple,</span><span class="l2">${nombre}</span></h1>
          <p class="bajada">${esc(saludos.length ? T.elBajada.replace('{personas}', plural(gente, 'persona', 'personas')).replace('{saludos}', plural(saludos.length, 'saludo', 'saludos')) : T.elBajadaVacia)}</p>
+         <button type="button" class="bajar" data-accion="ir-pastel">Hay un pastel para ti<i aria-hidden="true">↓</i></button>
          <div class="portada-pie">
            <div><button type="button" class="enlace-flecha" data-accion="saludar">${esc(T.elEscribir)}<i>→</i></button></div>
            <a class="cta-circulo" href="#mosaico" data-ir="mosaico">${esc(T.elVer)}</a>
@@ -369,6 +370,7 @@
 
     return `<div class="portada espacio"><div class="columna portada-texto">${portada}</div></div>
       <div class="columna">
+        ${esEl() ? htmlPastel() : ''}
         ${esEl() ? '' : `
         <div class="secreto" role="note"><span class="signo" aria-hidden="true">!</span><p><b>Es sorpresa.</b> No le reenvíes este enlace a ${nombre}: él recibirá el suyo el ${f}.</p></div>
         <section class="seccion">
@@ -625,7 +627,7 @@
   const ocupado = () => {
     const a = document.activeElement;
     if (a && /TEXTAREA|INPUT/.test(a.tagName) && a.closest('main')) return true;
-    return $$('main video, main audio').some(m => !m.paused && !m.ended) || !!$('#cancion-caja iframe');
+    return pastel.activo || !!pastel.mic || $$('main video, main audio').some(m => !m.paused && !m.ended) || !!$('#cancion-caja iframe');
   };
   async function cargar(forzar = false) {
     let lista;
@@ -898,6 +900,9 @@
     const acc = el.dataset.accion, id = el.dataset.id;
     switch (acc) {
       case 'saludar': abrirAsistente(); break;
+      case 'ir-pastel': { const z = $('#pastel'); if (z) z.scrollIntoView({ behavior: MOVIMIENTO ? 'smooth' : 'auto', block: 'start' }); break; }
+      case 'reencender': reencender(); break;
+      case 'soplar-mic': soplarConMic(); break;
       case 'filtrar': filtro = el.dataset.filtro; pintar(); break;
       case 'refrescar': pintar(); break;
       case 'ver-foto': $('#visor-img').src = el.dataset.url; $('#visor').hidden = false; break;
@@ -1132,7 +1137,21 @@
       ui(true);
       reloj = setTimeout(() => { pista = null; ui(false); }, (fin - ctx.currentTime) * 1000);
     }
-    return { abrir, parar };
+    function pff() {   // soplido corto al apagar una vela
+      if (!encender()) return;
+      const largo = .22, buf = ctx.createBuffer(1, Math.round(ctx.sampleRate * largo), ctx.sampleRate), d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2);
+      const src = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+      src.buffer = buf; f.type = 'bandpass'; f.frequency.value = 900 + Math.random() * 500; f.Q.value = .7; g.gain.value = .35;
+      src.connect(f); f.connect(g); g.connect(salida); src.start();
+    }
+    function fiesta() {
+      if (!encender()) return;
+      const t = ctx.currentTime + .05, dest = ctx.createGain(); dest.connect(salida);
+      [72, 76, 79, 84, 88, 91, 96, 100].forEach((m, i) => campana(dest, t + i * .06, m, .5, .1));
+      [[60, 64, 67, 72], [65, 69, 72, 77], [67, 71, 74, 79], [72, 76, 79, 84]].forEach((ac, j) => ac.forEach(m => campana(dest, t + .6 + j * .32, m, j === 3 ? 2.5 : .7, j === 3 ? .07 : .05)));
+    }
+    return { abrir, parar, pff, fiesta, encender };
   })();
   $('#musica-control').addEventListener('click', () => musica.parar());
   document.addEventListener('play', () => musica.parar(), true);   // si pone un video o un audio, la cajita se calla
@@ -1185,6 +1204,154 @@
     window.addEventListener('resize', () => { if (vivo) medir(); });
     return { estallar, llover };
   })();
+
+  // ---------- el pastel: pide un deseo y sopla las velas (Pura y Tapioca soplan contigo) ----------
+  const VELAS = [76, 98, 120, 142, 164];
+  const pastel = { apagadas: new Set(), fiesta: false, activo: false, mic: null, reloj: null };
+  function htmlPastel() {
+    const h = C.homenajeado, fiesta = pastel.fiesta;
+    const vela = (x, i) => `<g class="vela ${pastel.apagadas.has(i) ? 'apagada' : ''}" data-vela="${i}">
+        <rect x="${x - 4}" y="46" width="8" height="32" rx="2" fill="url(#pa-rayas)"/>
+        <path d="M${x} 46v-5" stroke="#3b2a20" stroke-width="1.6" stroke-linecap="round"/>
+        <g class="humo"><circle cx="${x}" cy="34" r="3"/><circle cx="${x + 3}" cy="26" r="4"/><circle cx="${x - 2}" cy="17" r="5"/></g>
+        <g class="llama" style="animation-delay:-${(i * .13).toFixed(2)}s"><circle cx="${x}" cy="33" r="13" fill="url(#pa-brillo)"/><path d="M${x} 21c5 7 6 12 3.5 16-1.3 2-2.3 3-3.5 3s-2.2-1-3.5-3c-2.5-4-1.5-9 3.5-16z" fill="url(#pa-fuego)"/><path d="M${x} 31c2 3 2.2 5 1 6.5-.5.6-.9.9-1 .9s-.5-.3-1-.9c-1.2-1.5-1-3.5 1-6.5z" fill="#fffbe8"/></g>
+      </g>`;
+    const gata = (k, lado) => `<div class="pa-gata ${lado}" aria-hidden="true">
+        <svg class="pa-viento" viewBox="0 0 60 40"><path d="M2 12c14-4 30-4 50 0"/><path d="M6 22c14-3 28-3 46 0"/><path d="M2 32c14-4 30-4 50 0"/></svg>
+        <svg class="pa-cara" viewBox="-52 -60 104 112">${gatos.cabeza(k)}<g class="pa-cachetes"><ellipse cx="-24" cy="16" rx="9" ry="7"/><ellipse cx="24" cy="16" rx="9" ry="7"/></g></svg>
+        <span class="pa-dice">${k === 'pura' ? '¡Sopla!' : '¡Pide un deseo!'}</span><span class="pa-bravo">${k === 'pura' ? '¡Bravo!' : '¡Miau!'}</span>
+      </div>`;
+    return `<section class="pastel-zona ${fiesta ? 'fiesta' : ''}" id="pastel" aria-labelledby="pastel-titulo">
+      <p class="rotulo">Un momento para ti</p>
+      <h2 id="pastel-titulo">${fiesta ? `¡Que se cumpla, ${esc(h.nombre)}!` : 'Pide un deseo'}</h2>
+      <p class="tenue pastel-ayuda">${fiesta ? 'Ahora sí: mira todo lo que tu gente te dejó con tanto cariño.' : 'Cierra los ojos, piensa en algo bonito y sopla las velas. Pura y Tapioca soplan contigo.'}</p>
+      <div class="pastel-escena" id="pastel-escena">
+        ${gata('pura', 'izq')}
+        <button type="button" class="pastel-boton" data-soplar aria-label="Soplar las velas">
+          <svg class="pastel-svg" viewBox="0 0 240 200" aria-hidden="true">
+            <defs>
+              <pattern id="pa-rayas" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(35)"><rect width="8" height="8" fill="#faf8f4"/><rect width="3.5" height="8" fill="#e8843f"/></pattern>
+              <radialGradient id="pa-fuego" cx="50%" cy="70%" r="60%"><stop offset="0" stop-color="#fff3b0"/><stop offset=".5" stop-color="#ffc24d"/><stop offset="1" stop-color="#f07b1d"/></radialGradient>
+              <radialGradient id="pa-brillo"><stop offset="0" stop-color="#ffd27a" stop-opacity=".55"/><stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient>
+            </defs>
+            <ellipse cx="120" cy="184" rx="104" ry="12" fill="#c7d5e2"/>
+            <rect x="30" y="122" width="180" height="58" rx="10" fill="#c9601a"/>
+            <path d="M30 132c0-6 4-10 10-10h160c6 0 10 4 10 10v6c-6 0-6 12-12 12s-6-10-12-10-6 16-13 16-6-14-13-14-6 10-12 10-6-12-13-12-6 18-13 18-6-16-13-16-6 10-12 10-6-12-13-12-6 14-13 14-6-12-12-12-6 8-12 8z" fill="#faf8f4"/>
+            <rect x="60" y="80" width="120" height="46" rx="9" fill="#2d5b85"/>
+            <path d="M60 88c0-5 3-8 8-8h104c5 0 8 3 8 8v4c-5 0-5 9-10 9s-5-7-10-7-5 12-10 12-5-10-10-10-5 7-10 7-5-9-10-9-5 13-10 13-5-11-10-11-5 7-10 7-5-9-10-9-5 9-10 9z" fill="#faf8f4"/>
+            <g fill="#f3c19b"><rect x="48" y="160" width="7" height="3" rx="1.5" transform="rotate(-25 51 161)"/><rect x="80" y="166" width="7" height="3" rx="1.5" transform="rotate(20 83 167)"/><rect x="118" y="158" width="7" height="3" rx="1.5"/><rect x="152" y="168" width="7" height="3" rx="1.5" transform="rotate(-15 155 169)"/><rect x="186" y="158" width="7" height="3" rx="1.5" transform="rotate(30 189 159)"/></g>
+            <g fill="#9db4c9"><circle cx="68" cy="152" r="2"/><circle cx="100" cy="172" r="2"/><circle cx="138" cy="150" r="2"/><circle cx="172" cy="174" r="2"/></g>
+            <g fill="#f3c19b"><circle cx="82" cy="114" r="2"/><circle cx="104" cy="118" r="2"/><circle cx="130" cy="112" r="2"/><circle cx="156" cy="118" r="2"/></g>
+            ${VELAS.map(vela).join('')}
+          </svg>
+        </button>
+        ${gata('tapioca', 'der')}
+      </div>
+      <div class="pastel-acciones">
+        ${fiesta
+          ? `<a class="btn btn-haz btn-grande invita" href="#mosaico" data-ir="mosaico">Ver mi mosaico<i aria-hidden="true">→</i></a>
+             <button type="button" class="btn-texto" data-accion="reencender">Encender las velas otra vez</button>`
+          : `<button type="button" class="btn btn-haz btn-grande invita" data-soplar>Soplar las velas</button>
+             <small class="tenue">Toca o mantén presionado. Cada soplido apaga una vela.</small>
+             <button type="button" class="btn-texto" data-accion="soplar-mic" id="pastel-mic">🎤 O sopla de verdad al micrófono</button>`}
+      </div>
+    </section>`;
+  }
+  function escenaPastel() { return $('#pastel'); }
+  function apagarUna() {
+    const z = escenaPastel(); if (!z || pastel.fiesta) return;
+    const vivas = VELAS.map((_, i) => i).filter(i => !pastel.apagadas.has(i));
+    if (!vivas.length) return;
+    const i = vivas[Math.random() * vivas.length | 0];
+    pastel.apagadas.add(i);
+    const g = z.querySelector(`[data-vela="${i}"]`); if (g) g.classList.add('apagada');
+    musica.pff();
+    if (pastel.apagadas.size === VELAS.length) setTimeout(celebrarPastel, 350);
+  }
+  function empezarSoplo() {
+    const z = escenaPastel(); if (!z || pastel.fiesta || pastel.activo) return;
+    musica.encender(); musica.parar();
+    pastel.activo = true; z.classList.add('soplando');
+    clearInterval(pastel.reloj);
+    apagarUna();   // cada toque es un soplido; si lo mantiene, sigue soplando
+    pastel.reloj = setInterval(apagarUna, 320);
+  }
+  function terminarSoplo() {
+    if (!pastel.activo) return;
+    pastel.activo = false; clearInterval(pastel.reloj);
+    const z = escenaPastel(); if (z && !pastel.mic) z.classList.remove('soplando');
+  }
+  function celebrarPastel() {
+    if (pastel.fiesta) return;
+    terminarSoplo(); cerrarMic();
+    pastel.fiesta = true;
+    const z = escenaPastel(); if (!z) return;
+    const r = z.querySelector('.pastel-svg').getBoundingClientRect();
+    z.outerHTML = htmlPastel();
+    const n = escenaPastel(); n.classList.add('recien');
+    musica.fiesta();
+    if (MOVIMIENTO) confeti.estallar(r.left + r.width / 2, r.top + r.height * .3, innerWidth < 560 ? 110 : 160);
+  }
+  function reencender() {
+    pastel.apagadas.clear(); pastel.fiesta = false;
+    const z = escenaPastel(); if (z) z.outerHTML = htmlPastel();
+  }
+  function cerrarMic() {
+    const m = pastel.mic; pastel.mic = null;
+    if (!m) return;
+    try { m.stream.getTracks().forEach(t => t.stop()); } catch { /* */ }
+    try { m.ctx.close(); } catch { /* */ }
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* */ }
+    const z = escenaPastel(); if (z) { z.classList.remove('soplando', 'escuchando'); const b = $('#pastel-mic'); if (b) b.textContent = '🎤 O sopla de verdad al micrófono'; }
+  }
+  async function soplarConMic() {
+    if (pastel.mic) { cerrarMic(); return; }
+    const b = $('#pastel-mic');
+    try {
+      if (navigator.audioSession) navigator.audioSession.type = 'play-and-record';
+      musica.parar();
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+      const AC = window.AudioContext || window.webkitAudioContext, ctx = new AC();
+      if (ctx.state !== 'running') ctx.resume();
+      const an = ctx.createAnalyser(); an.fftSize = 1024; ctx.createMediaStreamSource(stream).connect(an);
+      const datos = new Float32Array(an.fftSize);
+      pastel.mic = { stream, ctx };
+      const z = escenaPastel(); if (z) z.classList.add('escuchando');
+      if (b) b.textContent = 'Te escucho: ¡sopla fuerte! (toca aquí para parar)';
+      const t0 = performance.now(); let ultimo = t0, fondo = 0, muestras = 0, carga = 0;
+      const paso = ahora => {
+        if (!pastel.mic || pastel.mic.stream !== stream) return;
+        an.getFloatTimeDomainData(datos);
+        let suma = 0; for (let i = 0; i < datos.length; i++) suma += datos[i] * datos[i];
+        const rms = Math.sqrt(suma / datos.length), dt = ahora - ultimo; ultimo = ahora;
+        if (ahora - t0 < 350) { fondo += rms; muestras++; }
+        else {
+          const umbral = Math.max(.07, Math.min(fondo / Math.max(1, muestras), .05) * 3);
+          const z2 = escenaPastel();
+          if (rms > umbral) { if (z2) z2.classList.add('soplando'); carga += dt; if (carga > 200) { carga = 0; apagarUna(); } }
+          else { if (z2) z2.classList.remove('soplando'); carga = Math.max(0, carga - dt / 2); }
+        }
+        if (pastel.fiesta) return cerrarMic();
+        if (ahora - t0 > 30000) { cerrarMic(); tostada('Si no se apagaron, toca el botón para soplar.'); return; }
+        requestAnimationFrame(paso);
+      };
+      requestAnimationFrame(paso);
+    } catch {
+      cerrarMic();
+      tostada('No pude usar el micrófono. Toca el botón para soplar.', 4500);
+    }
+  }
+  // soplar: tocar o mantener presionado el pastel o el botón
+  document.addEventListener('pointerdown', ev => {
+    const b = ev.target.closest('[data-soplar]'); if (!b) return;
+    ev.preventDefault(); empezarSoplo();
+  });
+  ['pointerup', 'pointercancel'].forEach(t => document.addEventListener(t, terminarSoplo));
+  document.addEventListener('click', ev => {   // con teclado: un soplido largo que apaga todas
+    const b = ev.target.closest('[data-soplar]'); if (!b || ev.detail !== 0) return;
+    empezarSoplo(); setTimeout(terminarSoplo, 300 * VELAS.length + 200);
+  });
+  document.addEventListener('contextmenu', ev => { if (ev.target.closest('[data-soplar]')) ev.preventDefault(); });
 
   function mostrarTelon() {
     const T = C.textos, h = C.homenajeado, t = $('#telon');
@@ -1563,7 +1730,7 @@
         programar(false);
       }, primera ? 4500 + Math.random() * 3000 : 12000 + Math.random() * 12000);
     }
-    return { iniciar: () => programar(true), aparecer };
+    return { iniciar: () => programar(true), aparecer, cabeza };
   })();
   window.miau = gatos.aparecer;   // travesura: escribe miau('pura'), miau('', 'jugar'), miau('tapioca', 'juguete') o miau('', 'hipnosis') en la consola
 
